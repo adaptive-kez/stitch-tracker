@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+/* ========================================
+   🎨 ПРОСТО ТРЕКЕР — Design Tokens
+   ======================================== */
+
+:root {
+  /* Colors - matching reference exactly */
+  --bg-primary: #000000;
+  --bg-card: #1C1C1E;
+  --bg-button: #2C2C2E;
+  --bg-input: #2C2C2E;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+  --text-muted: #636366;
+
+  --accent-blue: #3B82F6;
+  --accent-orange: #F97316;
+  --accent-green: #22C55E;
+  --accent-red: #EF4444;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* Radius - iOS style */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Safe areas for mobile */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ========================================
+   🔧 Base Styles
+   ======================================== */
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   📦 Component Classes
+   ======================================== */
+
+/* Card component */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+/* Button base */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.btn-secondary {
+  background: var(--bg-button);
+  color: var(--text-primary);
+}
+
+/* Pill selector */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pill-active {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.pill-inactive {
+  background: var(--bg-button);
+  color: var(--text-secondary);
+}
+
+/* Segmented control */
+.segmented-control {
+  display: flex;
+  background: var(--bg-button);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+
+.segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segment-active {
+  background: var(--accent-blue);
+  color: white;
+}
+
+/* Input field */
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 16px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  box-shadow: 0 0 0 2px var(--accent-blue);
+}
+
+/* List item */
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.list-item:active {
+  background: var(--bg-button);
+}
+
+/* Settings list item */
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+/* ========================================
+   🦆 Duck Mascot Empty State
+   ======================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.empty-state-duck {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-state-text {
+  color: var(--text-secondary);
+  font-size: 16px;
+  text-align: center;
+}
+
+/* ========================================
+   📱 iOS Safe Areas
+   ======================================== */
+
+.safe-top {
+  padding-top: var(--safe-top);
+}
+
+.safe-bottom {
+  padding-bottom: max(var(--safe-bottom), 20px);
+}
+
+/* ========================================
+   🎭 Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
