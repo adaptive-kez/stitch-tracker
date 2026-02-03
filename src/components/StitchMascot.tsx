@@ -1,14 +1,11 @@
 import { motion } from 'framer-motion'
 import type { StitchMood } from '@/types'
-import type { Easing } from 'framer-motion'
 
 interface StitchMascotProps {
     variant?: StitchMood
     size?: 'sm' | 'md' | 'lg'
     className?: string
 }
-
-const easeInOut: Easing = 'easeInOut'
 
 export function StitchMascot({
     variant = 'happy',
@@ -24,140 +21,41 @@ export function StitchMascot({
     const s = sizeMap[size]
 
     // Animation variants for different moods
-    const earAnimation = {
-        happy: {
-            rotate: [0, 5, -5, 0],
-            transition: { repeat: Infinity, duration: 2, ease: easeInOut }
-        },
-        excited: {
-            rotate: [0, 15, -15, 0],
-            transition: { repeat: Infinity, duration: 0.5, ease: easeInOut }
-        },
-        sleeping: {
-            rotate: [0, -3, 0],
-            transition: { repeat: Infinity, duration: 3, ease: easeInOut }
-        },
-        waiting: {
-            rotate: [0, 2, -2, 0],
-            transition: { repeat: Infinity, duration: 1.5, ease: easeInOut }
-        },
-        thinking: {
-            rotate: [-5, -10, -5],
-            transition: { repeat: Infinity, duration: 2, ease: easeInOut }
-        }
-    }
-
     const bodyAnimation = {
         happy: {
-            y: [0, -3, 0],
-            transition: { repeat: Infinity, duration: 1.5, ease: easeInOut }
+            y: [0, -5, 0],
+            rotate: [0, 2, -2, 0],
+            transition: { repeat: Infinity, duration: 2, ease: 'easeInOut' as const }
         },
         excited: {
-            y: [0, -8, 0],
-            scale: [1, 1.05, 1],
-            transition: { repeat: Infinity, duration: 0.4, ease: easeInOut }
+            y: [0, -10, 0],
+            scale: [1, 1.08, 1],
+            transition: { repeat: Infinity, duration: 0.5, ease: 'easeInOut' as const }
         },
         sleeping: {
-            y: [0, 2, 0],
-            transition: { repeat: Infinity, duration: 3, ease: easeInOut }
+            y: [0, 3, 0],
+            rotate: [0, -5, 0],
+            transition: { repeat: Infinity, duration: 3, ease: 'easeInOut' as const }
         },
         waiting: {
-            y: [0, -2, 0],
-            transition: { repeat: Infinity, duration: 2, ease: easeInOut }
+            y: [0, -3, 0],
+            transition: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' as const }
         },
         thinking: {
-            rotate: [0, 3, 0],
-            transition: { repeat: Infinity, duration: 2.5, ease: easeInOut }
+            rotate: [0, 5, 0, -5, 0],
+            transition: { repeat: Infinity, duration: 3, ease: 'easeInOut' as const }
         }
     }
 
-    // Eye expressions based on mood
-    const getEyeExpression = () => {
+    // Filter based on mood
+    const getFilter = () => {
         switch (variant) {
             case 'sleeping':
-                return (
-                    <>
-                        {/* Closed eyes */}
-                        <path
-                            d="M32 50 Q38 47 44 50"
-                            stroke="#1a1a2e"
-                            strokeWidth="2.5"
-                            fill="none"
-                            strokeLinecap="round"
-                        />
-                        <path
-                            d="M56 50 Q62 47 68 50"
-                            stroke="#1a1a2e"
-                            strokeWidth="2.5"
-                            fill="none"
-                            strokeLinecap="round"
-                        />
-                        {/* Zzz */}
-                        <motion.text
-                            x="75"
-                            y="35"
-                            fontSize="12"
-                            fill="#6366f1"
-                            fontWeight="bold"
-                            animate={{ opacity: [0, 1, 0], y: [35, 25, 35] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                        >
-                            z
-                        </motion.text>
-                        <motion.text
-                            x="82"
-                            y="28"
-                            fontSize="10"
-                            fill="#6366f1"
-                            fontWeight="bold"
-                            animate={{ opacity: [0, 1, 0], y: [28, 20, 28] }}
-                            transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
-                        >
-                            z
-                        </motion.text>
-                    </>
-                )
+                return 'brightness(0.8) saturate(0.7)'
             case 'excited':
-                return (
-                    <>
-                        {/* Big sparkly eyes */}
-                        <ellipse cx="38" cy="50" rx="7" ry="9" fill="#1a1a2e" />
-                        <ellipse cx="62" cy="50" rx="7" ry="9" fill="#1a1a2e" />
-                        <circle cx="36" cy="47" r="2.5" fill="white" />
-                        <circle cx="60" cy="47" r="2.5" fill="white" />
-                        <circle cx="40" cy="52" r="1.5" fill="white" />
-                        <circle cx="64" cy="52" r="1.5" fill="white" />
-                    </>
-                )
-            case 'thinking':
-                return (
-                    <>
-                        {/* Eyes looking up */}
-                        <ellipse cx="38" cy="48" rx="5" ry="6" fill="#1a1a2e" />
-                        <ellipse cx="62" cy="48" rx="5" ry="6" fill="#1a1a2e" />
-                        <circle cx="37" cy="45" r="2" fill="white" />
-                        <circle cx="61" cy="45" r="2" fill="white" />
-                        {/* Thought bubble */}
-                        <motion.g
-                            animate={{ opacity: [0.5, 1, 0.5] }}
-                            transition={{ repeat: Infinity, duration: 1.5 }}
-                        >
-                            <circle cx="80" cy="30" r="4" fill="#e2e8f0" />
-                            <circle cx="85" cy="22" r="3" fill="#e2e8f0" />
-                            <circle cx="88" cy="15" r="2" fill="#e2e8f0" />
-                        </motion.g>
-                    </>
-                )
+                return 'brightness(1.1) saturate(1.2)'
             default:
-                return (
-                    <>
-                        {/* Normal happy eyes */}
-                        <ellipse cx="38" cy="50" rx="5" ry="6" fill="#1a1a2e" />
-                        <ellipse cx="62" cy="50" rx="5" ry="6" fill="#1a1a2e" />
-                        <circle cx="36" cy="48" r="2" fill="white" />
-                        <circle cx="60" cy="48" r="2" fill="white" />
-                    </>
-                )
+                return 'none'
         }
     }
 
@@ -165,98 +63,102 @@ export function StitchMascot({
         <motion.div
             className={`inline-flex items-center justify-center ${className}`}
             animate={bodyAnimation[variant]}
+            style={{ position: 'relative' }}
         >
-            <svg
+            <motion.img
+                src="/stitch/stitch-main.png"
+                alt="Stitch"
                 width={s}
                 height={s}
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-            >
-                {/* Ears */}
-                <motion.g animate={earAnimation[variant]}>
-                    {/* Left ear */}
-                    <ellipse
-                        cx="20"
-                        cy="35"
-                        rx="12"
-                        ry="25"
-                        fill="#5B8DEE"
-                        transform="rotate(-20 20 35)"
-                    />
-                    <ellipse
-                        cx="20"
-                        cy="35"
-                        rx="8"
-                        ry="18"
-                        fill="#8FB8FF"
-                        transform="rotate(-20 20 35)"
-                    />
-                </motion.g>
-                <motion.g animate={{ ...earAnimation[variant], rotate: earAnimation[variant].rotate.map((r: number) => -r) }}>
-                    {/* Right ear */}
-                    <ellipse
-                        cx="80"
-                        cy="35"
-                        rx="12"
-                        ry="25"
-                        fill="#5B8DEE"
-                        transform="rotate(20 80 35)"
-                    />
-                    <ellipse
-                        cx="80"
-                        cy="35"
-                        rx="8"
-                        ry="18"
-                        fill="#8FB8FF"
-                        transform="rotate(20 80 35)"
-                    />
-                </motion.g>
+                style={{
+                    filter: getFilter(),
+                    objectFit: 'contain'
+                }}
+                draggable={false}
+            />
 
-                {/* Head/Body */}
-                <ellipse cx="50" cy="55" rx="35" ry="32" fill="#5B8DEE" />
+            {/* Zzz for sleeping */}
+            {variant === 'sleeping' && (
+                <>
+                    <motion.span
+                        style={{
+                            position: 'absolute',
+                            top: '-10px',
+                            right: '-5px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: '#6366f1'
+                        }}
+                        animate={{ opacity: [0, 1, 0], y: [-5, -15, -5] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                        z
+                    </motion.span>
+                    <motion.span
+                        style={{
+                            position: 'absolute',
+                            top: '-20px',
+                            right: '-15px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            color: '#6366f1'
+                        }}
+                        animate={{ opacity: [0, 1, 0], y: [-5, -12, -5] }}
+                        transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
+                    >
+                        z
+                    </motion.span>
+                </>
+            )}
 
-                {/* Light belly area */}
-                <ellipse cx="50" cy="62" rx="22" ry="18" fill="#8FB8FF" />
+            {/* Sparkles for excited */}
+            {variant === 'excited' && (
+                <>
+                    <motion.span
+                        style={{
+                            position: 'absolute',
+                            top: '-5px',
+                            left: '-5px',
+                            fontSize: '14px'
+                        }}
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ repeat: Infinity, duration: 0.8 }}
+                    >
+                        ✨
+                    </motion.span>
+                    <motion.span
+                        style={{
+                            position: 'absolute',
+                            top: '-10px',
+                            right: '-10px',
+                            fontSize: '12px'
+                        }}
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}
+                    >
+                        ⭐
+                    </motion.span>
+                </>
+            )}
 
-                {/* Eyes */}
-                {getEyeExpression()}
-
-                {/* Nose */}
-                <ellipse cx="50" cy="58" rx="6" ry="4" fill="#2D4A8A" />
-                <ellipse cx="49" cy="57" rx="2" ry="1" fill="#8FB8FF" opacity="0.5" />
-
-                {/* Mouth */}
-                {variant === 'happy' || variant === 'excited' ? (
-                    <path
-                        d="M42 66 Q50 74 58 66"
-                        stroke="#1a1a2e"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeLinecap="round"
-                    />
-                ) : variant === 'sleeping' ? (
-                    <path
-                        d="M45 67 Q50 69 55 67"
-                        stroke="#1a1a2e"
-                        strokeWidth="1.5"
-                        fill="none"
-                        strokeLinecap="round"
-                    />
-                ) : (
-                    <path
-                        d="M44 67 L56 67"
-                        stroke="#1a1a2e"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                )}
-
-                {/* Spots on head */}
-                <circle cx="30" cy="40" r="3" fill="#2D4A8A" />
-                <circle cx="70" cy="40" r="3" fill="#2D4A8A" />
-                <circle cx="50" cy="35" r="2" fill="#2D4A8A" />
-            </svg>
+            {/* Thought bubble for thinking */}
+            {variant === 'thinking' && (
+                <motion.div
+                    style={{
+                        position: 'absolute',
+                        top: '-15px',
+                        right: '-20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px'
+                    }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                    <span style={{ fontSize: '10px' }}>💭</span>
+                </motion.div>
+            )}
         </motion.div>
     )
 }

@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTelegram } from './hooks/useTelegram'
 import { useTasks } from './hooks/useTasks'
 import { useHabits } from './hooks/useHabits'
+import { useHabitLogs } from './hooks/useHabitLogs'
 import { useGoals } from './hooks/useGoals'
 import { useJournal } from './hooks/useJournal'
 import { tg } from './lib/telegram'
@@ -62,8 +63,15 @@ function App() {
   const {
     goals,
     isLoading: goalsLoading,
-    addGoal
+    addGoal,
+    toggleGoal
   } = useGoals(userId)
+
+  // Habit logs for tracking completion
+  const {
+    toggleHabitLog,
+    isHabitCompleted,
+  } = useHabitLogs(userId)
 
   // Journal integration
   const {
@@ -92,10 +100,32 @@ function App() {
     hasNotification: t.has_notification,
   }))
 
+  // Calculate completed days for each habit from logs
+  const getCompletedDaysForHabit = (habitId: string): number[] => {
+    // Get current week's dates
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    const dayOfWeek = today.getDay()
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    startOfWeek.setDate(today.getDate() - diffToMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const completedDays: number[] = []
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+      if (isHabitCompleted(habitId, dateStr)) {
+        completedDays.push(i)
+      }
+    }
+    return completedDays
+  }
+
   const transformedHabits = habits.map(h => ({
     id: h.id,
     title: h.title,
-    completedDays: [], // Will be populated by habit logs
+    completedDays: getCompletedDaysForHabit(h.id),
     startDate: h.start_date,
     endDate: h.end_date,
     hasNotification: h.has_notification,
@@ -107,6 +137,7 @@ function App() {
     title: g.title,
     year: g.year,
     deadline: g.deadline,
+    isCompleted: g.is_completed,
   }))
 
   // Handlers now use Supabase hooks
@@ -144,6 +175,22 @@ function App() {
 
   const handleAddGoal = (goalData: { title: string; year: number; deadline?: string }) => {
     addGoal(goalData.title)
+  }
+
+  // Handle habit day toggle - convert day index to date and call toggleHabitLog
+  const handleToggleHabitDay = (habitId: string, dayIndex: number) => {
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    const dayOfWeek = today.getDay()
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    startOfWeek.setDate(today.getDate() - diffToMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const targetDate = new Date(startOfWeek)
+    targetDate.setDate(startOfWeek.getDate() + dayIndex)
+    const dateStr = targetDate.toISOString().split('T')[0]
+
+    toggleHabitLog(habitId, dateStr)
   }
 
   // Date navigation
@@ -204,6 +251,7 @@ function App() {
             <HabitsScreen
               habits={transformedHabits}
               onAddHabit={handleAddHabit}
+              onToggleHabitDay={handleToggleHabitDay}
               selectedDate={selectedDate}
             />
           </Suspense>
@@ -214,6 +262,7 @@ function App() {
             <GoalsScreen
               goals={transformedGoals}
               onAddGoal={handleAddGoal}
+              onToggleGoal={toggleGoal}
             />
           </Suspense>
         )
