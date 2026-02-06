@@ -71,6 +71,7 @@ export function useHabitLogs(userId: string | null) {
                 }
             } else {
                 // Add log to DB
+                console.log('Inserting habit log:', { habitId, userId, logDate })
                 const { data, error } = await supabase
                     .from('habit_logs')
                     .insert({
@@ -95,6 +96,7 @@ export function useHabitLogs(userId: string | null) {
                 ))
             }
         } catch (error) {
+            console.error('Habit log error:', error)
             // Silently fail - optimistic update already reverted
         }
     }
