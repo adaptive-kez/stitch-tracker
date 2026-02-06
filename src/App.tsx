@@ -45,10 +45,11 @@ function App() {
 
   // Telegram WebApp integration
   const { user: telegramUser } = useTelegram()
-  const userId = telegramUser?.id?.toString() || null
-
   // User profile with updateProfile function
   const { user: dbUser, updateProfile } = useUser(telegramUser)
+
+  // Use Supabase user_id for all database operations
+  const userId = dbUser?.user_id || null
 
   // M1: Supabase integration with proper hooks
   const {
