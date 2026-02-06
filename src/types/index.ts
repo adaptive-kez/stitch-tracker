@@ -47,6 +47,7 @@ export interface User {
     first_name?: string
     last_name?: string
     avatar_url?: string
+    photo_url?: string  // Same as avatar_url, matches DB column
     email?: string
     timezone: string
     // Subscription

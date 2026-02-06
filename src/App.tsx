@@ -305,7 +305,10 @@ function App() {
             onNext={goToNextDay}
             onCalendar={() => setShowCalendar(!showCalendar)}
             onSettings={() => setShowSettings(true)}
-            user={telegramUser ? { firstName: telegramUser.first_name, photoUrl: telegramUser.photo_url } : undefined}
+            user={telegramUser ? {
+              firstName: dbUser?.first_name || telegramUser.first_name,
+              photoUrl: dbUser?.photo_url || telegramUser.photo_url
+            } : undefined}
           />
         )}
 

@@ -61,7 +61,7 @@ export function useUser(telegramUser: TelegramUser | null) {
                             username: telegramUser.username || undefined,
                             first_name: telegramUser.first_name,
                             last_name: telegramUser.last_name || undefined,
-                            avatar_url: telegramUser.photo_url || undefined,
+                            photo_url: telegramUser.photo_url || undefined,
                         })
                         .eq('telegram_id', telegramId)
                         .select()
@@ -79,7 +79,7 @@ export function useUser(telegramUser: TelegramUser | null) {
                             username: telegramUser.username || undefined,
                             first_name: telegramUser.first_name,
                             last_name: telegramUser.last_name || undefined,
-                            avatar_url: telegramUser.photo_url || undefined,
+                            photo_url: telegramUser.photo_url || undefined,
                         })
                         .select()
                         .single()
