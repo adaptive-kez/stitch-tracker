@@ -179,9 +179,14 @@ function App() {
         ? `${taskData.date}T${taskData.notificationTime}:00`
         : `${taskData.date}T09:00:00`
 
+      // Format date in Russian (3 февраля 2026)
+      const taskDateObj = new Date(taskData.date)
+      const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+      const formattedDate = `${taskDateObj.getDate()} ${months[taskDateObj.getMonth()]} ${taskDateObj.getFullYear()}`
+
       await scheduleNotification({
         chatId: telegramUser.id,
-        message: `📋 ${taskData.title}\n\nДата: ${taskData.date}`,
+        message: `📝 Напоминание\n\nЗадача: ${taskData.title}\nДата: ${formattedDate}`,
         type: 'task',
         scheduledTime,
       })
