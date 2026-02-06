@@ -181,7 +181,8 @@ function App() {
         : `${taskData.date}T09:00:00`
 
       // Format date in Russian (3 февраля 2026)
-      const taskDateObj = new Date(taskData.date)
+      // Add T12:00:00 to avoid timezone issues when parsing YYYY-MM-DD
+      const taskDateObj = new Date(taskData.date + 'T12:00:00')
       const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
       const formattedDate = `${taskDateObj.getDate()} ${months[taskDateObj.getMonth()]} ${taskDateObj.getFullYear()}`
 
