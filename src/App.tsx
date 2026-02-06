@@ -74,6 +74,7 @@ function App() {
 
   // Habit logs for tracking completion
   const {
+    logs: habitLogs,
     toggleHabitLog,
     isHabitCompleted,
   } = useHabitLogs(userId)
@@ -304,6 +305,9 @@ function App() {
             <AnalyticsScreen
               tasks={transformedTasks}
               habits={transformedHabits}
+              habitLogs={habitLogs}
+              goals={goals}
+              journalEntries={journalEntries}
             />
           </Suspense>
         )

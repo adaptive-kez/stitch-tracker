@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useMemo } from 'react'
-import { X } from 'lucide-react'
+import { X, Target, BookOpen, CheckCircle2, Flame } from 'lucide-react'
 
 interface Task {
     id: string
@@ -13,11 +13,36 @@ interface Habit {
     id: string
     title: string
     completedDays: number[]
+    completedDaysOfMonth?: number[]
+}
+
+interface HabitLog {
+    id: string
+    habit_id: string
+    completed_at: string
+    user_id: string
+}
+
+interface Goal {
+    id: string
+    title: string
+    progress: number
+    deadline?: string
+}
+
+interface JournalEntry {
+    id: string
+    type: 'notes' | 'thought' | 'gratitude' | 'lesson'
+    content: string
+    date: string
 }
 
 interface AnalyticsScreenProps {
     tasks: Task[]
     habits: Habit[]
+    habitLogs?: HabitLog[]
+    goals?: Goal[]
+    journalEntries?: JournalEntry[]
 }
 
 interface DayStats {
@@ -28,12 +53,18 @@ interface DayStats {
     tasks: Task[]
 }
 
-export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps) {
+export function AnalyticsScreen({
+    tasks,
+    habits,
+    habitLogs = [],
+    goals = [],
+    journalEntries = []
+}: AnalyticsScreenProps) {
     const [dataSource, setDataSource] = useState<'tasks' | 'habits'>('tasks')
     const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week')
     const [selectedDay, setSelectedDay] = useState<DayStats | null>(null)
 
-    // Calculate stats for current week
+    // Calculate stats for current week (tasks)
     const weekStats = useMemo(() => {
         const today = new Date()
         const startOfWeek = new Date(today)
@@ -65,12 +96,46 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
         return days
     }, [tasks])
 
+    // Calculate habit stats for current week
+    const habitWeekStats = useMemo(() => {
+        const today = new Date()
+        const startOfWeek = new Date(today)
+        const dayOfWeek = today.getDay()
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        startOfWeek.setDate(today.getDate() - diffToMonday)
+        startOfWeek.setHours(0, 0, 0, 0)
+
+        const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
+        const days: { date: string; dayName: string; completed: number; total: number }[] = []
+
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek)
+            date.setDate(startOfWeek.getDate() + i)
+            const dateStr = date.toISOString().split('T')[0]
+
+            // Count completed habits for this day from habitLogs
+            const completedOnDay = habitLogs.filter(
+                log => log.completed_at.split('T')[0] === dateStr
+            ).length
+
+            days.push({
+                date: dateStr,
+                dayName: dayNames[i],
+                completed: completedOnDay,
+                total: habits.length,
+            })
+        }
+
+        return days
+    }, [habits, habitLogs])
+
     // Find most productive day
     const mostProductiveDay = useMemo(() => {
+        const stats = dataSource === 'tasks' ? weekStats : habitWeekStats
         let maxCompleted = 0
         let bestDay = 'ПН'
 
-        weekStats.forEach(day => {
+        stats.forEach(day => {
             if (day.completed > maxCompleted) {
                 maxCompleted = day.completed
                 bestDay = day.dayName
@@ -78,23 +143,92 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
         })
 
         return bestDay
-    }, [weekStats])
+    }, [weekStats, habitWeekStats, dataSource])
 
+    // Task stats
     const totalTasks = tasks.length
     const completedTasks = tasks.filter(t => t.completed).length
     const incompleteTasks = totalTasks - completedTasks
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+    // Habit stats
+    const thisWeekHabitLogs = habitLogs.filter(log => {
+        const logDate = new Date(log.completed_at)
+        const today = new Date()
+        const startOfWeek = new Date(today)
+        const dayOfWeek = today.getDay()
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        startOfWeek.setDate(today.getDate() - diffToMonday)
+        startOfWeek.setHours(0, 0, 0, 0)
+        return logDate >= startOfWeek
+    }).length
+
+    // Calculate habit streak (consecutive days with at least one habit completed)
+    const habitStreak = useMemo(() => {
+        if (habitLogs.length === 0) return 0
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        let streak = 0
+        let checkDate = new Date(today)
+
+        while (true) {
+            const dateStr = checkDate.toISOString().split('T')[0]
+            const hasCompletion = habitLogs.some(
+                log => log.completed_at.split('T')[0] === dateStr
+            )
+
+            if (hasCompletion) {
+                streak++
+                checkDate.setDate(checkDate.getDate() - 1)
+            } else {
+                break
+            }
+        }
+
+        return streak
+    }, [habitLogs])
+
+    const habitCompletionRate = habits.length > 0 && thisWeekHabitLogs > 0
+        ? Math.min(100, Math.round((thisWeekHabitLogs / (habits.length * 7)) * 100))
+        : 0
+
+    // Goal stats
+    const completedGoals = goals.filter(g => g.progress >= 100).length
+    const totalGoals = goals.length
+    const averageGoalProgress = goals.length > 0
+        ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length)
+        : 0
+
+    // Journal stats
+    const totalJournalEntries = journalEntries.length
+    const journalThisWeek = journalEntries.filter(e => {
+        const entryDate = new Date(e.date)
+        const today = new Date()
+        const startOfWeek = new Date(today)
+        const dayOfWeek = today.getDay()
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        startOfWeek.setDate(today.getDate() - diffToMonday)
+        startOfWeek.setHours(0, 0, 0, 0)
+        return entryDate >= startOfWeek
+    }).length
+    const gratitudeEntries = journalEntries.filter(e => e.type === 'gratitude').length
+    const lessonEntries = journalEntries.filter(e => e.type === 'lesson').length
+
+    // Current stats based on data source
+    const currentStats = dataSource === 'tasks' ? weekStats : habitWeekStats
+    const currentCompletionRate = dataSource === 'tasks' ? taskCompletionRate : habitCompletionRate
 
     // Bar chart max height calculation
-    const maxTotal = Math.max(...weekStats.map(d => d.total), 1)
+    const maxTotal = Math.max(...currentStats.map(d => d.total), 1)
 
     return (
-        <div className="flex-1 px-4 space-y-4">
+        <div className="flex-1 px-4 space-y-4 pb-4">
             {/* Title Section */}
             <div>
                 <h1 className="text-2xl font-bold mb-1">Аналитика</h1>
                 <p className="text-[var(--text-secondary)] text-sm">
-                    Здесь вы можете посмотреть свою статистику и целеустремлённость.
+                    Ваша статистика продуктивности и прогресс.
                 </p>
             </div>
 
@@ -137,7 +271,7 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
                 ))}
             </div>
 
-            {/* Stats Card */}
+            {/* Main Stats Card */}
             <div className="p-4 rounded-xl bg-[var(--bg-card)]">
                 <div className="flex items-center gap-6">
                     {/* Circular Progress */}
@@ -161,36 +295,54 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
                                 strokeLinecap="round"
                                 initial={{ strokeDasharray: '264', strokeDashoffset: '264' }}
                                 animate={{
-                                    strokeDashoffset: 264 - (264 * completionRate / 100)
+                                    strokeDashoffset: 264 - (264 * currentCompletionRate / 100)
                                 }}
                                 transition={{ duration: 0.8, ease: 'easeOut' }}
                             />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center text-xl font-bold">
-                            {completionRate}%
+                            {currentCompletionRate}%
                         </div>
                     </div>
 
                     {/* Stats List */}
                     <div className="flex-1 space-y-2 text-sm">
+                        {dataSource === 'tasks' ? (
+                            <>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-secondary)]">Всего задач:</span>
+                                    <span className="font-medium">{totalTasks}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-secondary)]">Выполнено:</span>
+                                    <span className="font-medium text-[var(--accent-green)]">{completedTasks}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-secondary)]">Невыполнено:</span>
+                                    <span className="font-medium text-[var(--accent-red)]">{incompleteTasks}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-secondary)]">Привычек:</span>
+                                    <span className="font-medium">{habits.length}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-secondary)]">За неделю:</span>
+                                    <span className="font-medium text-[var(--accent-green)]">{thisWeekHabitLogs}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[var(--text-secondary)]">Серия:</span>
+                                    <span className="font-medium flex items-center gap-1">
+                                        <Flame size={14} className="text-orange-500" />
+                                        {habitStreak} дн.
+                                    </span>
+                                </div>
+                            </>
+                        )}
                         <div className="flex justify-between">
-                            <span className="text-[var(--text-secondary)]">Всего задач:</span>
-                            <span className="font-medium">{totalTasks}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-[var(--text-secondary)]">Выполнено:</span>
-                            <span className="font-medium text-[var(--accent-green)]">{completedTasks}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-[var(--text-secondary)]">Невыполнено:</span>
-                            <span className="font-medium text-[var(--accent-red)]">{incompleteTasks}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-[var(--text-secondary)]">Средний прогресс:</span>
-                            <span className="font-medium">{completionRate}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-[var(--text-secondary)]">Продуктивный день:</span>
+                            <span className="text-[var(--text-secondary)]">Лучший день:</span>
                             <span className="font-medium">{mostProductiveDay}</span>
                         </div>
                     </div>
@@ -200,10 +352,10 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
             {/* Interactive Weekly Chart */}
             <div className="p-4 rounded-xl bg-[var(--bg-card)]">
                 <h3 className="text-sm font-medium mb-3 text-[var(--text-secondary)]">
-                    Нажмите на столбец для подробностей
+                    {dataSource === 'tasks' ? 'Задачи за неделю' : 'Привычки за неделю'}
                 </h3>
                 <div className="flex justify-between items-end gap-2 h-32">
-                    {weekStats.map((day) => {
+                    {currentStats.map((day) => {
                         const height = day.total > 0 ? Math.max(20, (day.total / maxTotal) * 100) : 20
                         const completedHeight = day.total > 0 ? (day.completed / day.total) * height : 0
 
@@ -211,7 +363,7 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
                             <motion.button
                                 key={day.date}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => setSelectedDay(day)}
+                                onClick={() => dataSource === 'tasks' && setSelectedDay(day as DayStats)}
                                 className="flex-1 flex flex-col items-center gap-2 cursor-pointer group"
                             >
                                 <div className="w-full flex flex-col items-center">
@@ -237,6 +389,78 @@ export function AnalyticsScreen({ tasks, habits: _habits }: AnalyticsScreenProps
                     })}
                 </div>
             </div>
+
+            {/* Goals Summary */}
+            {goals.length > 0 && (
+                <div className="p-4 rounded-xl bg-[var(--bg-card)]">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Target size={18} className="text-[var(--accent-blue)]" />
+                        <h3 className="text-sm font-medium">Цели на год</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                            <div className="text-2xl font-bold">{totalGoals}</div>
+                            <div className="text-xs text-[var(--text-secondary)]">Всего</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-[var(--accent-green)]">{completedGoals}</div>
+                            <div className="text-xs text-[var(--text-secondary)]">Достигнуто</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-[var(--accent-blue)]">{averageGoalProgress}%</div>
+                            <div className="text-xs text-[var(--text-secondary)]">Прогресс</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Journal Summary */}
+            {journalEntries.length > 0 && (
+                <div className="p-4 rounded-xl bg-[var(--bg-card)]">
+                    <div className="flex items-center gap-2 mb-3">
+                        <BookOpen size={18} className="text-purple-500" />
+                        <h3 className="text-sm font-medium">Дневник</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <CheckCircle2 size={20} className="text-purple-500" />
+                            </div>
+                            <div>
+                                <div className="font-bold">{totalJournalEntries}</div>
+                                <div className="text-xs text-[var(--text-secondary)]">Всего записей</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <span className="text-lg">🙏</span>
+                            </div>
+                            <div>
+                                <div className="font-bold">{gratitudeEntries}</div>
+                                <div className="text-xs text-[var(--text-secondary)]">Благодарностей</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                <span className="text-lg">💡</span>
+                            </div>
+                            <div>
+                                <div className="font-bold">{lessonEntries}</div>
+                                <div className="text-xs text-[var(--text-secondary)]">Уроков дня</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                <span className="text-lg">📝</span>
+                            </div>
+                            <div>
+                                <div className="font-bold">{journalThisWeek}</div>
+                                <div className="text-xs text-[var(--text-secondary)]">За неделю</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Daily Breakdown Popup */}
             <AnimatePresence>
