@@ -95,14 +95,18 @@ function App() {
   }, [])
 
   // Transform Supabase data to screen format
-  const transformedTasks = tasks.map(t => ({
-    id: t.id,
-    title: t.title,
-    completed: t.is_completed,
-    date: t.date,
-    isImportant: t.is_important,
-    hasNotification: t.has_notification,
-  }))
+  const selectedDateISO = selectedDate.toISOString().split('T')[0]
+
+  const transformedTasks = tasks
+    .filter(t => t.date === selectedDateISO) // Only show tasks for selected date
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      completed: t.is_completed,
+      date: t.date,
+      isImportant: t.is_important,
+      hasNotification: t.has_notification,
+    }))
 
   // Calculate completed days for each habit from logs
   const getCompletedDaysForHabit = (habitId: string): number[] => {
