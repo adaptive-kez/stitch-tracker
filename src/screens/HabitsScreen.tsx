@@ -9,7 +9,8 @@ import type { RecurrenceRule } from '@/types'
 interface Habit {
     id: string
     title: string
-    completedDays: number[]
+    completedDays: number[]  // Week view: indexes 0-6 (Mon-Sun)
+    completedDaysOfMonth?: number[]  // Month view: actual day numbers (1-31)
     startDate?: string
     endDate?: string
     hasNotification?: boolean
@@ -392,21 +393,37 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
                             )}
 
                             {/* Month Grid */}
-                            {viewMode === 'month' && (
-                                <div className="grid grid-cols-7 gap-1">
-                                    {Array.from({ length: 31 }, (_, i) => (
-                                        <div
-                                            key={i}
-                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${habit.completedDays.includes(i)
-                                                ? 'bg-[var(--accent-blue)] text-white'
-                                                : 'bg-[var(--bg-button)] text-[var(--text-secondary)]'
-                                                }`}
-                                        >
-                                            {i + 1}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            {viewMode === 'month' && (() => {
+                                const today = new Date()
+                                const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+                                const currentDay = today.getDate()
+                                const completedDaysOfMonth = habit.completedDaysOfMonth || []
+
+                                return (
+                                    <div className="grid grid-cols-7 gap-1">
+                                        {Array.from({ length: daysInMonth }, (_, i) => {
+                                            const day = i + 1
+                                            const isCompleted = completedDaysOfMonth.includes(day)
+                                            const isToday = day === currentDay
+
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs relative
+                                                        ${isCompleted
+                                                            ? 'bg-[var(--accent-blue)] text-white'
+                                                            : 'bg-[var(--bg-button)] text-[var(--text-secondary)]'
+                                                        }
+                                                        ${isToday && !isCompleted ? 'ring-2 ring-[var(--accent-blue)] ring-offset-1 ring-offset-[var(--bg-card)]' : ''}
+                                                    `}
+                                                >
+                                                    {day}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )
+                            })()}
                         </div>
                     ))}
                 </div>

@@ -131,10 +131,29 @@ function App() {
     return completedDays
   }
 
+  // Get completed days of the current month for month view
+  const getCompletedDaysOfMonth = (habitId: string): number[] => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = today.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    const completedDays: number[] = []
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day)
+      const dateStr = date.toISOString().split('T')[0]
+      if (isHabitCompleted(habitId, dateStr)) {
+        completedDays.push(day) // Push the actual day number (1-31)
+      }
+    }
+    return completedDays
+  }
+
   const transformedHabits = habits.map(h => ({
     id: h.id,
     title: h.title,
     completedDays: getCompletedDaysForHabit(h.id),
+    completedDaysOfMonth: getCompletedDaysOfMonth(h.id),
     startDate: h.start_date,
     endDate: h.end_date,
     hasNotification: h.has_notification,
