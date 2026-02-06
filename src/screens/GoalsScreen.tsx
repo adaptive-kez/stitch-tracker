@@ -175,7 +175,7 @@ export function GoalsScreen({ goals, onAddGoal, onToggleGoal }: GoalsScreenProps
                             <span>Назад</span>
                         </motion.button>
                         <div className="text-center">
-                            <div className="font-semibold">Просто Трекер</div>
+                            <div className="font-semibold">Ya Reji</div>
                             <div className="text-xs text-[var(--text-secondary)]">мини-приложение</div>
                         </div>
                         <div className="w-16" />
