@@ -400,7 +400,7 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
                                                             </svg>
                                                         )}
                                                     </motion.button>
-                                                    <span className="text-xs text-[var(--text-secondary)]">{dayOfMonth}.{String(date.getMonth() + 1).padStart(2, '0')} / {day.toLowerCase()}</span>
+                                                    <span className="text-xs text-[var(--text-secondary)]">{String(dayOfMonth).padStart(2, '0')}.{String(date.getMonth() + 1).padStart(2, '0')}</span>
                                                 </div>
                                             )
                                         })}
