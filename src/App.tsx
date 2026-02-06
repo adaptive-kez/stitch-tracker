@@ -48,8 +48,8 @@ function App() {
   // User profile with updateProfile function
   const { user: dbUser, updateProfile } = useUser(telegramUser)
 
-  // Use Supabase user_id for all database operations
-  const userId = dbUser?.user_id || null
+  // Use Supabase user UUID (id) for all database operations
+  const userId = dbUser?.id || null
 
   // M1: Supabase integration with proper hooks
   const {

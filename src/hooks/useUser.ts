@@ -41,11 +41,12 @@ export function useUser(telegramUser: TelegramUser | null) {
             }
 
             try {
-                // Check if user exists in Supabase
+                // Check if user exists in Supabase by telegram_id
+                const telegramId = telegramUser.id // Use numeric ID directly
                 const { data: existingUser, error: fetchError } = await supabase
                     .from('users')
                     .select('*')
-                    .eq('user_id', userId)
+                    .eq('telegram_id', telegramId)
                     .single()
 
                 if (fetchError && fetchError.code !== 'PGRST116') {
@@ -62,7 +63,7 @@ export function useUser(telegramUser: TelegramUser | null) {
                             last_name: telegramUser.last_name || undefined,
                             avatar_url: telegramUser.photo_url || undefined,
                         })
-                        .eq('user_id', userId)
+                        .eq('telegram_id', telegramId)
                         .select()
                         .single()
 
@@ -74,7 +75,7 @@ export function useUser(telegramUser: TelegramUser | null) {
                     const { data: newUser, error: createError } = await supabase
                         .from('users')
                         .insert({
-                            user_id: userId,
+                            telegram_id: telegramId,
                             username: telegramUser.username || undefined,
                             first_name: telegramUser.first_name,
                             last_name: telegramUser.last_name || undefined,
