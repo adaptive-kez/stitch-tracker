@@ -1,5 +1,6 @@
-import { Plus, ChevronDown, ChevronUp, Clock, Sparkles, Heart, MessageCircle, ChevronLeft, Star, Calendar, X, Bell, Repeat } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, ChevronDown, ChevronUp, Clock, Sparkles, Heart, MessageCircle, ChevronLeft, Star, Calendar, X, Bell, Repeat, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
 import { StitchMascot } from '@/components/StitchMascot'
 import { Switch } from '@/components/ui/switch'
@@ -30,6 +31,7 @@ interface TasksScreenProps {
     // Journal integration
     journalEntries?: JournalEntry[]
     onAddJournalEntry?: (type: JournalType, content: string) => void
+    onDeleteJournalEntry?: (id: string) => void
 }
 
 // Journal type mapping
@@ -54,6 +56,7 @@ export function TasksScreen({
     selectedDate,
     journalEntries = [],
     onAddJournalEntry,
+    onDeleteJournalEntry,
 }: TasksScreenProps) {
     const [showMore, setShowMore] = useState(false)
     const [isAdding, setIsAdding] = useState(false)
@@ -435,17 +438,53 @@ export function TasksScreen({
                 {todayEntries.length > 0 && (
                     <div className="space-y-2">
                         <h3 className="text-sm font-medium text-[var(--text-secondary)]">Записи дня</h3>
-                        {todayEntries.map((entry) => (
-                            <div key={entry.id} className="p-3 rounded-xl bg-[var(--bg-card)] text-sm">
-                                <div className="text-xs text-[var(--text-secondary)] mb-1">
-                                    {entry.type === 'notes' && 'Заметки'}
-                                    {entry.type === 'lesson' && 'Урок дня'}
-                                    {entry.type === 'gratitude' && 'Благодарность'}
-                                    {entry.type === 'thought' && 'Мысли'}
+                        {todayEntries.map((entry) => {
+                            const x = useMotionValue(0)
+                            const background = useTransform(
+                                x,
+                                [-100, 0],
+                                ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
+                            )
+                            const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+
+                            const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+                                if (info.offset.x < -100 && onDeleteJournalEntry) {
+                                    onDeleteJournalEntry(entry.id)
+                                }
+                            }
+
+                            return (
+                                <div key={entry.id} className="relative overflow-hidden rounded-xl">
+                                    {/* Delete indicator */}
+                                    <motion.div
+                                        style={{ background }}
+                                        className="absolute inset-0 flex items-center justify-end pr-4 rounded-xl"
+                                    >
+                                        <motion.div style={{ opacity: deleteOpacity }}>
+                                            <Trash2 size={20} className="text-white" />
+                                        </motion.div>
+                                    </motion.div>
+
+                                    {/* Swipeable content */}
+                                    <motion.div
+                                        drag="x"
+                                        dragConstraints={{ left: -150, right: 0 }}
+                                        dragElastic={0.1}
+                                        onDragEnd={handleDragEnd}
+                                        style={{ x }}
+                                        className="p-3 rounded-xl bg-[var(--bg-card)] text-sm relative z-10 cursor-grab active:cursor-grabbing"
+                                    >
+                                        <div className="text-xs text-[var(--text-secondary)] mb-1">
+                                            {entry.type === 'notes' && 'Заметки'}
+                                            {entry.type === 'lesson' && 'Урок дня'}
+                                            {entry.type === 'gratitude' && 'Благодарность'}
+                                            {entry.type === 'thought' && 'Мысли'}
+                                        </div>
+                                        <p>{entry.content}</p>
+                                    </motion.div>
                                 </div>
-                                <p>{entry.content}</p>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
 

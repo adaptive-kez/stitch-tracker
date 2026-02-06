@@ -83,6 +83,7 @@ function App() {
   const {
     entries: journalEntries,
     addEntry: addJournalEntry,
+    deleteEntry: deleteJournalEntry,
   } = useJournal(userId)
 
   // Handler for adding journal entries
@@ -280,6 +281,7 @@ function App() {
               selectedDate={selectedDate}
               journalEntries={journalEntries}
               onAddJournalEntry={handleAddJournalEntry}
+              onDeleteJournalEntry={deleteJournalEntry}
             />
           </Suspense>
         )
