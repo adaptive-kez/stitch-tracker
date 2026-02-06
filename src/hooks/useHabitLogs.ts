@@ -41,18 +41,36 @@ export function useHabitLogs(userId: string | null) {
             l => l.habit_id === habitId && l.completed_at === logDate
         )
 
+        // Optimistic update for instant UI feedback
+        if (existingLog) {
+            // Remove from local state immediately
+            setLogs(prev => prev.filter(l => l.id !== existingLog.id))
+        } else {
+            // Add to local state immediately with temp ID
+            const tempLog: HabitLog = {
+                id: `temp-${Date.now()}`,
+                habit_id: habitId,
+                user_id: userId,
+                completed_at: logDate,
+            }
+            setLogs(prev => [tempLog, ...prev])
+        }
+
         try {
             if (existingLog) {
-                // Remove log
+                // Remove log from DB
                 const { error } = await supabase
                     .from('habit_logs')
                     .delete()
                     .eq('id', existingLog.id)
 
-                if (error) throw error
-                setLogs(prev => prev.filter(l => l.id !== existingLog.id))
+                if (error) {
+                    // Rollback on error
+                    setLogs(prev => [existingLog, ...prev])
+                    throw error
+                }
             } else {
-                // Add log
+                // Add log to DB
                 const { data, error } = await supabase
                     .from('habit_logs')
                     .insert({
@@ -63,11 +81,21 @@ export function useHabitLogs(userId: string | null) {
                     .select()
                     .single()
 
-                if (error) throw error
-                setLogs(prev => [data, ...prev])
+                if (error) {
+                    // Rollback on error
+                    setLogs(prev => prev.filter(l => !l.id.startsWith('temp-')))
+                    throw error
+                }
+
+                // Replace temp with real data
+                setLogs(prev => prev.map(l =>
+                    l.id.startsWith('temp-') && l.habit_id === habitId && l.completed_at === logDate
+                        ? data
+                        : l
+                ))
             }
         } catch (error) {
-            console.error('Error toggling habit log:', error)
+            // Silently fail - optimistic update already reverted
         }
     }
 

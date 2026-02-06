@@ -183,52 +183,7 @@ export function TasksScreen({
         </AnimatePresence>
     )
 
-    // Journal Modal
-    const JournalModal = () => (
-        <AnimatePresence>
-            {showJournalModal && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center"
-                    onClick={() => setShowJournalModal(false)}
-                >
-                    <motion.div
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="bg-[var(--bg-primary)] rounded-t-3xl p-6 w-full max-w-lg"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-12 h-1 bg-[var(--bg-button)] rounded-full mx-auto mb-4" />
 
-                        <h3 className="font-semibold text-lg mb-4">
-                            {journalLabels[activeJournalType]}
-                        </h3>
-
-                        <textarea
-                            value={journalContent}
-                            onChange={(e) => setJournalContent(e.target.value)}
-                            placeholder={`Напишите ${journalLabels[activeJournalType].toLowerCase()}...`}
-                            autoFocus
-                            className="w-full h-32 p-4 bg-[var(--bg-card)] rounded-xl text-base resize-none outline-none mb-4"
-                        />
-
-                        <motion.button
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleSaveJournalEntry}
-                            disabled={!journalContent.trim()}
-                            className="btn btn-primary w-full cursor-pointer disabled:opacity-50"
-                        >
-                            Сохранить
-                        </motion.button>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    )
 
     // Full screen add task form
     if (isAdding) {
@@ -375,7 +330,50 @@ export function TasksScreen({
 
     return (
         <>
-            <JournalModal />
+            {/* Journal Modal - inline to avoid re-render issues */}
+            <AnimatePresence>
+                {showJournalModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center"
+                        onClick={() => setShowJournalModal(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="bg-[var(--bg-primary)] rounded-t-3xl p-6 w-full max-w-lg"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-1 bg-[var(--bg-button)] rounded-full mx-auto mb-4" />
+
+                            <h3 className="font-semibold text-lg mb-4">
+                                {journalLabels[activeJournalType]}
+                            </h3>
+
+                            <textarea
+                                value={journalContent}
+                                onChange={(e) => setJournalContent(e.target.value)}
+                                placeholder={`Напишите ${journalLabels[activeJournalType].toLowerCase()}...`}
+                                autoFocus
+                                className="w-full h-32 p-4 bg-[var(--bg-card)] rounded-xl text-base resize-none outline-none mb-4"
+                            />
+
+                            <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleSaveJournalEntry}
+                                disabled={!journalContent.trim()}
+                                className="btn btn-primary w-full cursor-pointer disabled:opacity-50"
+                            >
+                                Сохранить
+                            </motion.button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <div className="flex-1 px-4 space-y-4">
                 {/* Counter */}
                 <div className="flex justify-end">

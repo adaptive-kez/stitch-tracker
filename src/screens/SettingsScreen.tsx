@@ -1,54 +1,38 @@
 import { useState } from 'react'
-import { User, Crown, Bell, HelpCircle, ChevronRight } from 'lucide-react'
+import { User, Bell, HelpCircle, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ProfileScreen } from './ProfileScreen'
-import { SubscriptionScreen } from './SubscriptionScreen'
 import { NotificationSettingsScreen } from './NotificationSettingsScreen'
-import type { SubscriptionStatus } from '@/types'
+import type { User as UserType } from '@/types'
 
 interface SettingsScreenProps {
     onClose: () => void
-    // User data (would come from context/props in real app)
-    user?: {
-        firstName: string
-        lastName?: string
-        email?: string
-        timezone: string
-        subscriptionStatus: SubscriptionStatus
-        subscriptionEndDate?: string
-        autoRenewal: boolean
-        summariesEnabled: boolean
-        morningSummaryTime: string
-        eveningSummaryTime: string
-    }
+    onUpdateProfile: (data: { firstName: string; lastName?: string; email?: string; timezone: string }) => Promise<boolean>
+    userProfile: UserType | null
 }
 
-type SettingsView = 'main' | 'profile' | 'subscription' | 'notifications'
+type SettingsView = 'main' | 'profile' | 'notifications'
 
-export function SettingsScreen({ onClose, user }: SettingsScreenProps) {
+export function SettingsScreen({ onClose, onUpdateProfile, userProfile }: SettingsScreenProps) {
     const [currentView, setCurrentView] = useState<SettingsView>('main')
 
-    // Mock user data if not provided
-    const userData = user || {
-        firstName: 'Пользователь',
-        lastName: undefined,
-        email: undefined,
-        timezone: 'Europe/Moscow',
-        subscriptionStatus: 'inactive' as SubscriptionStatus,
-        subscriptionEndDate: undefined,
-        autoRenewal: false,
-        summariesEnabled: true,
-        morningSummaryTime: '09:00',
-        eveningSummaryTime: '21:00',
+    // Default user data
+    const userData = {
+        firstName: userProfile?.first_name || 'Пользователь',
+        lastName: userProfile?.last_name,
+        email: userProfile?.email,
+        timezone: userProfile?.timezone || 'Europe/Moscow',
+        summariesEnabled: userProfile?.summaries_enabled || false,
+        morningSummaryTime: userProfile?.morning_summary_time || '09:00',
+        eveningSummaryTime: userProfile?.evening_summary_time || '21:00',
     }
 
-    // Local state for settings (in real app, this would sync with backend)
+    // Local state for settings
     const [notificationsEnabled, setNotificationsEnabled] = useState(userData.summariesEnabled)
     const [morningSummaryEnabled, setMorningSummaryEnabled] = useState(true)
     const [eveningSummaryEnabled, setEveningSummaryEnabled] = useState(true)
     const [morningSummaryTime, setMorningSummaryTime] = useState(userData.morningSummaryTime)
     const [eveningSummaryTime, setEveningSummaryTime] = useState(userData.eveningSummaryTime)
-    const [autoRenewal, setAutoRenewal] = useState(userData.autoRenewal)
 
     // Render sub-screens
     if (currentView === 'profile') {
@@ -60,22 +44,12 @@ export function SettingsScreen({ onClose, user }: SettingsScreenProps) {
                     email: userData.email,
                     timezone: userData.timezone,
                 }}
-                onSave={(data) => {
-                    console.log('Save profile:', data)
-                    setCurrentView('main')
+                onSave={async (data) => {
+                    const success = await onUpdateProfile(data)
+                    if (success) {
+                        setCurrentView('main')
+                    }
                 }}
-                onBack={() => setCurrentView('main')}
-            />
-        )
-    }
-
-    if (currentView === 'subscription') {
-        return (
-            <SubscriptionScreen
-                status={userData.subscriptionStatus}
-                endDate={userData.subscriptionEndDate}
-                autoRenewal={autoRenewal}
-                onToggleAutoRenewal={setAutoRenewal}
                 onBack={() => setCurrentView('main')}
             />
         )
@@ -108,15 +82,6 @@ export function SettingsScreen({ onClose, user }: SettingsScreenProps) {
             rightText: undefined,
         },
         {
-            id: 'subscription' as const,
-            icon: Crown,
-            label: 'Подписка',
-            color: '#F59E0B',
-            rightText: userData.subscriptionStatus === 'active' ? 'Premium'
-                : userData.subscriptionStatus === 'trial' ? 'Пробный'
-                    : 'Неактивна',
-        },
-        {
             id: 'notifications' as const,
             icon: Bell,
             label: 'Уведомления',
@@ -133,10 +98,9 @@ export function SettingsScreen({ onClose, user }: SettingsScreenProps) {
     ]
 
     const handleItemClick = (id: string) => {
-        if (id === 'profile' || id === 'subscription' || id === 'notifications') {
+        if (id === 'profile' || id === 'notifications') {
             setCurrentView(id as SettingsView)
         } else if (id === 'support') {
-            // Open Telegram support chat
             window.open('https://t.me/prostotracker_support', '_blank')
         }
     }
@@ -157,7 +121,7 @@ export function SettingsScreen({ onClose, user }: SettingsScreenProps) {
                     <div className="font-semibold">Просто Трекер</div>
                     <div className="text-xs text-[var(--text-secondary)]">мини-приложение</div>
                 </div>
-                <div className="w-16" /> {/* Spacer for centering */}
+                <div className="w-16" />
             </div>
 
             {/* Section Title */}

@@ -11,6 +11,7 @@ import { useHabits } from './hooks/useHabits'
 import { useHabitLogs } from './hooks/useHabitLogs'
 import { useGoals } from './hooks/useGoals'
 import { useJournal } from './hooks/useJournal'
+import { useUser } from './hooks/useUser'
 import { tg } from './lib/telegram'
 import { scheduleNotification } from './lib/notifications'
 import type { JournalType, RecurrenceRule } from './types'
@@ -43,8 +44,11 @@ function App() {
   const [showCalendar, setShowCalendar] = useState(false)
 
   // Telegram WebApp integration
-  const { user } = useTelegram()
-  const userId = user?.id?.toString() || null
+  const { user: telegramUser } = useTelegram()
+  const userId = telegramUser?.id?.toString() || null
+
+  // User profile with updateProfile function
+  const { user: dbUser, updateProfile } = useUser(telegramUser)
 
   // M1: Supabase integration with proper hooks
   const {
@@ -145,13 +149,13 @@ function App() {
     addTask(taskData.title, taskData.date)
 
     // Send notification if enabled
-    if (taskData.hasNotification && user?.id) {
+    if (taskData.hasNotification && telegramUser?.id) {
       const scheduledTime = taskData.notificationTime
         ? `${taskData.date}T${taskData.notificationTime}:00`
         : `${taskData.date}T09:00:00`
 
       await scheduleNotification({
-        chatId: user.id,
+        chatId: telegramUser.id,
         message: `📋 ${taskData.title}\n\nДата: ${taskData.date}`,
         type: 'task',
         scheduledTime,
@@ -217,7 +221,11 @@ function App() {
     if (showSettings) {
       return (
         <Suspense fallback={<div className="p-4"><TaskSkeleton /></div>}>
-          <SettingsScreen onClose={() => setShowSettings(false)} />
+          <SettingsScreen
+            onClose={() => setShowSettings(false)}
+            onUpdateProfile={updateProfile}
+            userProfile={dbUser}
+          />
         </Suspense>
       )
     }
@@ -292,7 +300,7 @@ function App() {
             onNext={goToNextDay}
             onCalendar={() => setShowCalendar(!showCalendar)}
             onSettings={() => setShowSettings(true)}
-            user={user ? { firstName: user.first_name, photoUrl: user.photo_url } : undefined}
+            user={telegramUser ? { firstName: telegramUser.first_name, photoUrl: telegramUser.photo_url } : undefined}
           />
         )}
 

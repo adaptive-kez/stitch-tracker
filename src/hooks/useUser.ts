@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { User, TelegramUser } from '@/types'
 
@@ -89,8 +89,6 @@ export function useUser(telegramUser: TelegramUser | null) {
                     setState({ user: newUser, isLoading: false, error: null })
                 }
             } catch (error) {
-                console.error('Error with user:', error)
-
                 // Fallback: create local user
                 const localUser: User = {
                     id: crypto.randomUUID(),
@@ -115,5 +113,58 @@ export function useUser(telegramUser: TelegramUser | null) {
         fetchOrCreateUser()
     }, [telegramUser])
 
-    return state
+    // Update user profile
+    const updateProfile = useCallback(async (data: {
+        firstName: string
+        lastName?: string
+        email?: string
+        timezone: string
+    }): Promise<boolean> => {
+        if (!state.user) return false
+
+        try {
+            const { data: updatedUser, error } = await supabase
+                .from('users')
+                .update({
+                    first_name: data.firstName,
+                    last_name: data.lastName || null,
+                    email: data.email || null,
+                    timezone: data.timezone,
+                })
+                .eq('user_id', state.user.user_id)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // Update local state
+            setState(prev => ({
+                ...prev,
+                user: updatedUser,
+            }))
+            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updatedUser))
+            return true
+        } catch (error) {
+            // Fallback: update locally
+            const updatedUser = {
+                ...state.user,
+                first_name: data.firstName,
+                last_name: data.lastName,
+                email: data.email,
+                timezone: data.timezone,
+            }
+            setState(prev => ({
+                ...prev,
+                user: updatedUser,
+            }))
+            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updatedUser))
+            return true
+        }
+    }, [state.user])
+
+    return {
+        ...state,
+        updateProfile,
+    }
 }
+
