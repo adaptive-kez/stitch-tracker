@@ -329,7 +329,7 @@ function App() {
         {!showSettings && (
           <Header
             title="Сегодня"
-            subtitle={`Пт. ${selectedDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`}
+            subtitle={selectedDate.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '')}
             showDateSelector={activeTab === 'tasks'}
             onPrevious={goToPreviousDay}
             onNext={goToNextDay}
