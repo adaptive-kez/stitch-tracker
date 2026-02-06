@@ -368,29 +368,45 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
                             </div>
 
                             {/* Week Grid */}
-                            {viewMode === 'week' && (
-                                <div className="flex justify-between gap-1">
-                                    {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, i) => (
-                                        <div key={day} className="flex flex-col items-center gap-1">
-                                            <motion.button
-                                                whileTap={{ scale: 0.9 }}
-                                                onClick={() => onToggleHabitDay?.(habit.id, i)}
-                                                className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors ${habit.completedDays.includes(i)
-                                                    ? 'bg-[var(--accent-blue)]'
-                                                    : 'bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)]'
-                                                    }`}
-                                            >
-                                                {habit.completedDays.includes(i) && (
-                                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                )}
-                                            </motion.button>
-                                            <span className="text-xs text-[var(--text-secondary)]">{day}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            {viewMode === 'week' && (() => {
+                                const today = new Date()
+                                const dayOfWeek = today.getDay()
+                                const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+                                const startOfWeek = new Date(today)
+                                startOfWeek.setDate(today.getDate() - diffToMonday)
+
+                                const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+                                return (
+                                    <div className="flex justify-between gap-1">
+                                        {weekDays.map((day, i) => {
+                                            const date = new Date(startOfWeek)
+                                            date.setDate(startOfWeek.getDate() + i)
+                                            const dayOfMonth = date.getDate()
+
+                                            return (
+                                                <div key={day} className="flex flex-col items-center gap-1">
+                                                    <motion.button
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={() => onToggleHabitDay?.(habit.id, i)}
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors ${habit.completedDays.includes(i)
+                                                            ? 'bg-[var(--accent-blue)]'
+                                                            : 'bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)]'
+                                                            }`}
+                                                    >
+                                                        {habit.completedDays.includes(i) && (
+                                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        )}
+                                                    </motion.button>
+                                                    <span className="text-xs text-[var(--text-secondary)]">{dayOfMonth}/{day}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )
+                            })()}
 
                             {/* Month Grid */}
                             {viewMode === 'month' && (() => {
