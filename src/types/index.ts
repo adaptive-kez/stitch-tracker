@@ -2,7 +2,7 @@
 
 export type TabType = 'tasks' | 'habits' | 'goals' | 'analytics'
 
-export type JournalType = 'thought' | 'gratitude' | 'lesson'
+export type JournalType = 'notes' | 'thought' | 'gratitude' | 'lesson'
 
 export type StitchMood = 'happy' | 'waiting' | 'sleeping' | 'excited' | 'thinking'
 

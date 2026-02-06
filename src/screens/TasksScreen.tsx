@@ -34,7 +34,7 @@ interface TasksScreenProps {
 
 // Journal type mapping
 const journalTypeMap: Record<string, JournalType> = {
-    notes: 'thought',
+    notes: 'notes',
     lesson: 'lesson',
     gratitude: 'gratitude',
     thoughts: 'thought',
@@ -438,6 +438,7 @@ export function TasksScreen({
                         {todayEntries.map((entry) => (
                             <div key={entry.id} className="p-3 rounded-xl bg-[var(--bg-card)] text-sm">
                                 <div className="text-xs text-[var(--text-secondary)] mb-1">
+                                    {entry.type === 'notes' && 'Заметки'}
                                     {entry.type === 'lesson' && 'Урок дня'}
                                     {entry.type === 'gratitude' && 'Благодарность'}
                                     {entry.type === 'thought' && 'Мысли'}
