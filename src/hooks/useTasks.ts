@@ -43,40 +43,95 @@ export function useTasks(userId: string | null) {
         }
     }, [tasks, userId])
 
-    // Add task
-    const addTask = async (title: string, date?: string) => {
+
+    // Helper function to generate dates based on recurrence rule
+    const generateRecurringDates = (startDate: string, rule: { type: string; interval?: number; days?: number[] }, daysAhead: number = 30): string[] => {
+        const dates: string[] = []
+        const start = new Date(startDate + 'T12:00:00')
+        const end = new Date(start)
+        end.setDate(end.getDate() + daysAhead)
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, etc.
+            const dateStr = d.toISOString().split('T')[0]
+
+            switch (rule.type) {
+                case 'daily':
+                    dates.push(dateStr)
+                    break
+                case 'weekdays':
+                    if (dayOfWeek >= 1 && dayOfWeek <= 5) dates.push(dateStr)
+                    break
+                case 'weekends':
+                    if (dayOfWeek === 0 || dayOfWeek === 6) dates.push(dateStr)
+                    break
+                case 'every_n':
+                    const daysDiff = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+                    if (daysDiff % (rule.interval || 1) === 0) dates.push(dateStr)
+                    break
+                case 'specific_days':
+                    if (rule.days?.includes(dayOfWeek)) dates.push(dateStr)
+                    break
+            }
+        }
+        return dates
+    }
+
+    // Add task (with recurrence support)
+    const addTask = async (taskData: {
+        title: string
+        date?: string
+        isImportant?: boolean
+        hasNotification?: boolean
+        notificationTime?: string
+        recurrenceRule?: { type: string; interval?: number; days?: number[] }
+    }) => {
         if (!userId) return
 
+        const { title, date, isImportant, hasNotification, notificationTime, recurrenceRule } = taskData
         const taskDate = date || new Date().toISOString().split('T')[0]
 
+        // Generate dates based on recurrence
+        let datesToCreate: string[] = [taskDate]
+        if (recurrenceRule && recurrenceRule.type !== 'once') {
+            datesToCreate = generateRecurringDates(taskDate, recurrenceRule, 30)
+        }
+
         try {
+            const tasksToInsert = datesToCreate.map(d => ({
+                user_id: userId,
+                title,
+                date: d,
+                is_completed: false,
+                is_important: isImportant || false,
+                has_notification: hasNotification || false,
+                notification_time: notificationTime || null,
+                recurrence_rule: recurrenceRule || null,
+            }))
+
             const { data, error } = await supabase
                 .from('tasks')
-                .insert({
-                    user_id: userId,
-                    title,
-                    date: taskDate,
-                    is_completed: false,
-                })
+                .insert(tasksToInsert)
                 .select()
-                .single()
 
             if (error) throw error
-            setTasks(prev => [data, ...prev])
+            setTasks(prev => [...(data || []), ...prev])
         } catch (error) {
             console.error('Error adding task:', error)
             // Fallback: add locally
-            const newTask: Task = {
+            const newTasks: Task[] = datesToCreate.map(d => ({
                 id: crypto.randomUUID(),
                 user_id: userId,
                 title,
-                date: taskDate,
+                date: d,
                 is_completed: false,
-                is_important: false,
-                has_notification: false,
+                is_important: isImportant || false,
+                has_notification: hasNotification || false,
+                notification_time: notificationTime,
+                recurrence_rule: recurrenceRule as Task['recurrence_rule'],
                 created_at: new Date().toISOString(),
-            }
-            setTasks(prev => [newTask, ...prev])
+            }))
+            setTasks(prev => [...newTasks, ...prev])
         }
     }
 

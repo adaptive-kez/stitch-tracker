@@ -171,8 +171,22 @@ function App() {
   }))
 
   // Handlers now use Supabase hooks
-  const handleAddTask = async (taskData: { title: string; date: string; isImportant: boolean; hasNotification: boolean; notificationTime?: string }) => {
-    addTask(taskData.title, taskData.date)
+  const handleAddTask = async (taskData: {
+    title: string
+    date: string
+    isImportant: boolean
+    hasNotification: boolean
+    notificationTime?: string
+    recurrenceRule?: RecurrenceRule
+  }) => {
+    addTask({
+      title: taskData.title,
+      date: taskData.date,
+      isImportant: taskData.isImportant,
+      hasNotification: taskData.hasNotification,
+      notificationTime: taskData.notificationTime,
+      recurrenceRule: taskData.recurrenceRule,
+    })
 
     // Send notification if enabled
     if (taskData.hasNotification && telegramUser?.id) {
