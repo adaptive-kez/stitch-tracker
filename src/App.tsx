@@ -56,7 +56,8 @@ function App() {
     tasks,
     isLoading: tasksLoading,
     addTask,
-    toggleTask
+    toggleTask,
+    deleteTask
   } = useTasks(userId)
 
   const {
@@ -293,6 +294,7 @@ function App() {
               tasks={transformedTasks}
               onAddTask={handleAddTask}
               onToggleTask={handleToggleTask}
+              onDeleteTask={deleteTask}
               selectedDate={selectedDate}
               journalEntries={journalEntries}
               onAddJournalEntry={handleAddJournalEntry}

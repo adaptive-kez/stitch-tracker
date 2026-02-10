@@ -101,7 +101,7 @@ export function SettingsScreen({ onClose, onUpdateProfile, userProfile }: Settin
         if (id === 'profile' || id === 'notifications') {
             setCurrentView(id as SettingsView)
         } else if (id === 'support') {
-            window.open('https://t.me/prostotracker_support', '_blank')
+            window.open('https://t.me/skaleushsergey', '_blank')
         }
     }
 
@@ -154,22 +154,6 @@ export function SettingsScreen({ onClose, onUpdateProfile, userProfile }: Settin
                         </motion.button>
                     )
                 })}
-            </div>
-
-            {/* Legal Links */}
-            <div className="pt-4 space-y-3">
-                <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full text-left text-[var(--accent-blue)] cursor-pointer"
-                >
-                    Пользовательское соглашение
-                </motion.button>
-                <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full text-left text-[var(--accent-blue)] cursor-pointer"
-                >
-                    Политика конфиденциальности
-                </motion.button>
             </div>
         </div>
     )

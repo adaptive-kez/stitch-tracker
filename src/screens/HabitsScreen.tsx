@@ -345,7 +345,7 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
             {/* Content */}
             {habits.length === 0 ? (
                 <div className="empty-state py-12">
-                    <StitchMascot variant="sleeping" size="lg" className="mb-4" />
+                    <StitchMascot variant="sleeping" size="lg" className="mb-4" interactive />
                     <p className="text-[var(--text-secondary)] text-base">
                         Привычек пока что нет
                     </p>

@@ -259,7 +259,7 @@ export function GoalsScreen({ goals, onAddGoal, onToggleGoal }: GoalsScreenProps
             {/* Content */}
             {filteredGoals.length === 0 ? (
                 <div className="empty-state py-12">
-                    <StitchMascot variant="thinking" size="lg" className="mb-4" />
+                    <StitchMascot variant="thinking" size="lg" className="mb-4" interactive />
                     <p className="text-[var(--text-secondary)] text-base">
                         Целей пока нет
                     </p>

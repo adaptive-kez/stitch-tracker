@@ -27,6 +27,7 @@ interface TasksScreenProps {
         recurrenceRule?: RecurrenceRule;
     }) => void
     onToggleTask: (id: string) => void
+    onDeleteTask?: (id: string) => void
     selectedDate: Date
     // Journal integration
     journalEntries?: JournalEntry[]
@@ -104,10 +105,91 @@ function SwipeableJournalEntry({
     )
 }
 
+// Swipeable Task Component - swipe left to delete
+function SwipeableTask({
+    task,
+    onToggle,
+    onDelete
+}: {
+    task: Task
+    onToggle: (id: string) => void
+    onDelete?: (id: string) => void
+}) {
+    const x = useMotionValue(0)
+    const background = useTransform(
+        x,
+        [-100, 0],
+        ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
+    )
+    const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+
+    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (info.offset.x < -100 && onDelete) {
+            onDelete(task.id)
+        }
+    }
+
+    return (
+        <div className="relative overflow-hidden rounded-xl">
+            {/* Delete indicator */}
+            <motion.div
+                style={{ background }}
+                className="absolute inset-0 flex items-center justify-end pr-4 rounded-xl"
+            >
+                <motion.div style={{ opacity: deleteOpacity }}>
+                    <Trash2 size={20} className="text-white" />
+                </motion.div>
+            </motion.div>
+
+            {/* Swipeable content */}
+            <motion.div
+                layout
+                drag="x"
+                dragConstraints={{ left: -150, right: 0 }}
+                dragElastic={0.1}
+                onDragEnd={handleDragEnd}
+                style={{ x }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-card)] relative z-10 cursor-grab active:cursor-grabbing ${task.isImportant ? 'border-2 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.15)]' : ''
+                    }`}
+            >
+                <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => onToggle(task.id)}
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer ${task.completed
+                        ? 'bg-[var(--accent-blue)] border-[var(--accent-blue)]'
+                        : 'border-[var(--text-secondary)]'
+                        }`}
+                >
+                    {task.completed && (
+                        <motion.svg
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="w-3 h-3 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </motion.svg>
+                    )}
+                </motion.button>
+                <span className={`flex-1 ${task.completed ? 'line-through text-[var(--text-secondary)]' : ''}`}>
+                    {task.title}
+                </span>
+                {task.hasNotification && <Bell size={14} className="text-[var(--accent-blue)]" />}
+                {task.isImportant && <Star size={16} className="text-yellow-500 fill-yellow-500" />}
+            </motion.div>
+        </div>
+    )
+}
+
 export function TasksScreen({
     tasks,
     onAddTask,
     onToggleTask,
+    onDeleteTask,
     selectedDate,
     journalEntries = [],
     onAddJournalEntry,
@@ -443,7 +525,7 @@ export function TasksScreen({
                 {/* Empty State or Task List */}
                 {tasks.length === 0 ? (
                     <div className="empty-state py-12">
-                        <StitchMascot variant="waiting" size="lg" className="mb-4" />
+                        <StitchMascot variant="waiting" size="lg" className="mb-4" interactive />
                         <p className="text-[var(--text-secondary)] text-base">
                             На сегодня задач нет
                         </p>
@@ -451,40 +533,12 @@ export function TasksScreen({
                 ) : (
                     <div className="space-y-2">
                         {tasks.map((task) => (
-                            <motion.div
+                            <SwipeableTask
                                 key={task.id}
-                                layout
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-card)]"
-                            >
-                                <motion.button
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => onToggleTask(task.id)}
-                                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer ${task.completed
-                                        ? 'bg-[var(--accent-blue)] border-[var(--accent-blue)]'
-                                        : 'border-[var(--text-secondary)]'
-                                        }`}
-                                >
-                                    {task.completed && (
-                                        <motion.svg
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            className="w-3 h-3 text-white"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </motion.svg>
-                                    )}
-                                </motion.button>
-                                <span className={`flex-1 ${task.completed ? 'line-through text-[var(--text-secondary)]' : ''}`}>
-                                    {task.title}
-                                </span>
-                                {task.hasNotification && <Bell size={14} className="text-[var(--accent-blue)]" />}
-                                {task.isImportant && <Star size={16} className="text-yellow-500 fill-yellow-500" />}
-                            </motion.div>
+                                task={task}
+                                onToggle={onToggleTask}
+                                onDelete={onDeleteTask}
+                            />
                         ))}
                     </div>
                 )}
