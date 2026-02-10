@@ -7,6 +7,7 @@ interface Task {
     title: string
     date: string
     completed: boolean
+    isImportant?: boolean
 }
 
 interface Habit {
@@ -151,10 +152,10 @@ export function AnalyticsScreen({
     const incompleteTasks = totalTasks - completedTasks
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-    // Important tasks stats
-    const importantTasks = tasks.filter(t => t.isImportant).length
-    const completedImportantTasks = tasks.filter(t => t.isImportant && t.completed).length
-    const importantCompletionRate = importantTasks > 0 ? Math.round((completedImportantTasks / importantTasks) * 100) : 0
+    // Important tasks stats (available for future UI integration)
+    // const importantTasks = tasks.filter(t => t.isImportant).length
+    // const completedImportantTasks = tasks.filter(t => t.isImportant && t.completed).length
+    // const importantCompletionRate = importantTasks > 0 ? Math.round((completedImportantTasks / importantTasks) * 100) : 0
 
     // Habit stats
     const thisWeekHabitLogs = habitLogs.filter(log => {
