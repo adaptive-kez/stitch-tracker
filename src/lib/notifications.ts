@@ -1,9 +1,9 @@
 /**
  * Notification Service for Stitch Tracker
- * Sends notifications via Cloudflare Worker -> Telegram Bot API
+ * Routes through main D1 Worker → Notification Worker (secured)
  */
 
-const WORKER_URL = 'https://stitch-tracker-notifications.stitch-tracker-api.workers.dev'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export interface NotificationPayload {
     chatId: number | string
@@ -17,15 +17,18 @@ export interface ScheduledNotification extends NotificationPayload {
 }
 
 /**
- * Send immediate notification
+ * Send immediate notification (proxied through main Worker)
  */
 export async function sendNotification(
     payload: NotificationPayload
 ): Promise<{ success: boolean; messageId?: number; error?: string }> {
     try {
-        const response = await fetch(`${WORKER_URL}/send`, {
+        const response = await fetch(`${API_URL}/api/notify/send`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Id': String(payload.chatId),
+            },
             body: JSON.stringify(payload),
         })
 
@@ -36,15 +39,18 @@ export async function sendNotification(
 }
 
 /**
- * Schedule notification for later
+ * Schedule notification for later (proxied through main Worker)
  */
 export async function scheduleNotification(
     payload: ScheduledNotification
 ): Promise<{ success: boolean; scheduled?: boolean; error?: string }> {
     try {
-        const response = await fetch(`${WORKER_URL}/schedule`, {
+        const response = await fetch(`${API_URL}/api/notify/schedule`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Id': String(payload.chatId),
+            },
             body: JSON.stringify(payload),
         })
 

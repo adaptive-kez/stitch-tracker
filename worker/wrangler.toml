@@ -4,6 +4,7 @@ compatibility_date = "2024-12-01"
 
 [vars]
 ENVIRONMENT = "production"
+NOTIFICATION_WORKER_URL = "https://stitch-tracker-notifications.stitch-tracker-api.workers.dev"
 
 [[d1_databases]]
 binding = "DB"

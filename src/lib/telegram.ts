@@ -17,14 +17,17 @@ export const isTelegramWebApp = (): boolean => {
 export const getTelegramUser = (): TelegramUser | null => {
     try {
         if (!isTelegramWebApp()) {
-            // Development mode - return mock user
-            return {
-                id: 123456789,
-                first_name: 'Dev',
-                last_name: 'User',
-                username: 'devuser',
-                language_code: 'ru',
+            // Development mode only - return mock user
+            if (import.meta.env.DEV) {
+                return {
+                    id: 123456789,
+                    first_name: 'Dev',
+                    last_name: 'User',
+                    username: 'devuser',
+                    language_code: 'ru',
+                }
             }
+            return null // Prod: block access outside Telegram
         }
 
         const user = WebApp.initDataUnsafe.user
