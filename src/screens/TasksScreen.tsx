@@ -1,4 +1,4 @@
-import { Plus, ChevronDown, ChevronUp, Clock, Sparkles, Heart, MessageCircle, ChevronLeft, Star, Calendar, X, Bell, Repeat, Trash2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Clock, Sparkles, Heart, MessageCircle, ChevronLeft, Star, Calendar, Bell, Repeat, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
@@ -6,6 +6,7 @@ import { StitchMascot } from '@/components/StitchMascot'
 import { Switch } from '@/components/ui/switch'
 import { FrequencySelector, getRecurrenceDescription } from '@/components/ui/FrequencySelector'
 import type { JournalType, JournalEntry, RecurrenceRule } from '@/types'
+import { DatePickerModal } from '@/components/ui/DatePickerModal'
 
 interface Task {
     id: string
@@ -284,63 +285,7 @@ export function TasksScreen({
     const todayISO = formatDateISO(selectedDate)
     const todayEntries = journalEntries.filter(e => e.date === todayISO)
 
-    // Date Picker Modal
-    const DatePickerModal = () => (
-        <AnimatePresence>
-            {showDatePicker && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-                    onClick={() => setShowDatePicker(false)}
-                >
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        className="bg-[var(--bg-card)] rounded-2xl p-4 w-full max-w-sm"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-lg">Выберите дату</h3>
-                            <button onClick={() => setShowDatePicker(false)} className="text-[var(--text-secondary)]">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Simple calendar grid */}
-                        <div className="grid grid-cols-7 gap-1 text-center text-sm mb-4">
-                            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
-                                <div key={d} className="py-2 text-[var(--text-secondary)]">{d}</div>
-                            ))}
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
-                                const isSelected = taskDate.getDate() === day
-                                return (
-                                    <motion.button
-                                        key={day}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={() => {
-                                            const newDate = new Date(taskDate)
-                                            newDate.setDate(day)
-                                            setTaskDate(newDate)
-                                            setShowDatePicker(false)
-                                        }}
-                                        className={`py-2 rounded-full cursor-pointer ${isSelected
-                                            ? 'bg-[var(--accent-blue)] text-white'
-                                            : 'hover:bg-[var(--bg-button)]'
-                                            }`}
-                                    >
-                                        {day}
-                                    </motion.button>
-                                )
-                            })}
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    )
+    // Date Picker uses shared component now
 
 
 
@@ -348,7 +293,12 @@ export function TasksScreen({
     if (isAdding) {
         return (
             <>
-                <DatePickerModal />
+                <DatePickerModal
+                    isOpen={showDatePicker}
+                    onClose={() => setShowDatePicker(false)}
+                    selectedDate={taskDate}
+                    onSelect={setTaskDate}
+                />
                 <div className="flex-1 px-4 py-4 space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between">
