@@ -57,7 +57,8 @@ function App() {
     isLoading: tasksLoading,
     addTask,
     toggleTask,
-    deleteTask
+    deleteTask,
+    deleteRecurringTasks
   } = useTasks(userId)
 
   const {
@@ -110,6 +111,7 @@ function App() {
       date: t.date,
       isImportant: t.is_important,
       hasNotification: t.has_notification,
+      recurrenceRule: t.recurrence_rule,
     }))
 
   // Calculate completed days for each habit from logs
@@ -295,6 +297,7 @@ function App() {
               onAddTask={handleAddTask}
               onToggleTask={handleToggleTask}
               onDeleteTask={deleteTask}
+              onDeleteRecurringTasks={deleteRecurringTasks}
               selectedDate={selectedDate}
               journalEntries={journalEntries}
               onAddJournalEntry={handleAddJournalEntry}

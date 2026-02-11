@@ -180,12 +180,45 @@ export function useTasks(userId: string | null) {
         }
     }
 
+    // Delete all tasks in a recurrence group (same title + recurrence_rule)
+    const deleteRecurringTasks = async (taskId: string) => {
+        const task = tasks.find(t => t.id === taskId)
+        if (!task || !task.recurrence_rule) {
+            // Not a recurring task, just delete the single one
+            return deleteTask(taskId)
+        }
+
+        // Find all tasks with matching title + recurrence_rule
+        const groupIds = tasks
+            .filter(t =>
+                t.title === task.title &&
+                t.user_id === task.user_id &&
+                JSON.stringify(t.recurrence_rule) === JSON.stringify(task.recurrence_rule)
+            )
+            .map(t => t.id)
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .in('id', groupIds)
+
+            if (error) throw error
+            setTasks(prev => prev.filter(t => !groupIds.includes(t.id)))
+        } catch (error) {
+            console.error('Error deleting recurring tasks:', error)
+            // Fallback: delete locally
+            setTasks(prev => prev.filter(t => !groupIds.includes(t.id)))
+        }
+    }
+
     return {
         tasks,
         isLoading,
         addTask,
         toggleTask,
         deleteTask,
+        deleteRecurringTasks,
         loadTasks,
     }
 }

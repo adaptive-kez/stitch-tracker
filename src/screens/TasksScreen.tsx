@@ -14,6 +14,7 @@ interface Task {
     date?: string
     isImportant?: boolean
     hasNotification?: boolean
+    recurrenceRule?: RecurrenceRule
 }
 
 interface TasksScreenProps {
@@ -28,6 +29,7 @@ interface TasksScreenProps {
     }) => void
     onToggleTask: (id: string) => void
     onDeleteTask?: (id: string) => void
+    onDeleteRecurringTasks?: (id: string) => void
     selectedDate: Date
     // Journal integration
     journalEntries?: JournalEntry[]
@@ -190,6 +192,7 @@ export function TasksScreen({
     onAddTask,
     onToggleTask,
     onDeleteTask,
+    onDeleteRecurringTasks,
     selectedDate,
     journalEntries = [],
     onAddJournalEntry,
@@ -210,6 +213,22 @@ export function TasksScreen({
     const [isImportant, setIsImportant] = useState(false)
     const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>({ type: 'once' })
     const [showFrequencySelector, setShowFrequencySelector] = useState(false)
+
+    // Delete confirmation for recurring tasks
+    const [deleteConfirmTask, setDeleteConfirmTask] = useState<Task | null>(null)
+
+    const handleDeleteTask = (taskId: string) => {
+        const task = tasks.find(t => t.id === taskId)
+        if (!task) return
+
+        if (task.recurrenceRule && task.recurrenceRule.type !== 'once') {
+            // Recurring task — show confirmation dialog
+            setDeleteConfirmTask(task)
+        } else {
+            // Single task — delete immediately
+            onDeleteTask?.(taskId)
+        }
+    }
 
     const completedCount = tasks.filter(t => t.completed).length
     const totalCount = tasks.length
@@ -537,7 +556,7 @@ export function TasksScreen({
                                 key={task.id}
                                 task={task}
                                 onToggle={onToggleTask}
-                                onDelete={onDeleteTask}
+                                onDelete={handleDeleteTask}
                             />
                         ))}
                     </div>
@@ -608,6 +627,68 @@ export function TasksScreen({
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Recurring Task Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteConfirmTask && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center"
+                        onClick={() => setDeleteConfirmTask(null)}
+                    >
+                        <motion.div
+                            initial={{ y: 300, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 300, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="bg-[var(--bg-card)] rounded-t-2xl w-full max-w-lg p-6 pb-8 space-y-3"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-10 h-1 bg-[var(--text-secondary)] rounded-full mx-auto mb-4 opacity-40" />
+                            <h3 className="text-lg font-semibold text-center">
+                                Удалить повторяющуюся задачу?
+                            </h3>
+                            <p className="text-sm text-[var(--text-secondary)] text-center">
+                                «{deleteConfirmTask.title}»
+                            </p>
+
+                            <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                    onDeleteTask?.(deleteConfirmTask.id)
+                                    setDeleteConfirmTask(null)
+                                }}
+                                className="w-full py-3.5 rounded-xl bg-[var(--bg-button)] font-medium cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={18} />
+                                Удалить только эту
+                            </motion.button>
+
+                            <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                    onDeleteRecurringTasks?.(deleteConfirmTask.id)
+                                    setDeleteConfirmTask(null)
+                                }}
+                                className="w-full py-3.5 rounded-xl bg-red-500/20 text-red-400 font-medium cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={18} />
+                                Удалить все из цикла
+                            </motion.button>
+
+                            <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setDeleteConfirmTask(null)}
+                                className="w-full py-3.5 rounded-xl bg-[var(--bg-button)] text-[var(--text-secondary)] font-medium cursor-pointer"
+                            >
+                                Отмена
+                            </motion.button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     )
 }
