@@ -1,0 +1,15 @@
+name = "stitch-tracker-api"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stitch-tracker-db"
+database_id = "73032ba3-8c1b-4e8a-b501-70ab7dd1e513"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "2945ad20bd384e499f4df1a21ebe54df"

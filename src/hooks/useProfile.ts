@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { tasksApi, habitLogsApi } from '@/lib/api'
 import type { UserStats } from '@/types'
 
 export function useProfile(userId: string | null) {
@@ -19,39 +19,23 @@ export function useProfile(userId: string | null) {
 
         const loadStats = async () => {
             try {
-                // Get completed tasks count
-                const { count: tasksCount } = await supabase
-                    .from('tasks')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', userId)
-                    .eq('is_completed', true)
+                // Get all tasks and habit logs, compute stats client-side
+                const [tasks, habitLogs] = await Promise.all([
+                    tasksApi.list(userId),
+                    habitLogsApi.list(userId),
+                ])
 
-                // Get habit logs count
-                const { count: logsCount } = await supabase
-                    .from('habit_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', userId)
-
-                // Get unique active days (from tasks and habit_logs)
-                const { data: taskDates } = await supabase
-                    .from('tasks')
-                    .select('date')
-                    .eq('user_id', userId)
-
-                const { data: logDates } = await supabase
-                    .from('habit_logs')
-                    .select('completed_at')
-                    .eq('user_id', userId)
+                const completedTasks = tasks.filter(t => !!(t.is_completed)).length
 
                 const allDates = new Set([
-                    ...(taskDates?.map(t => t.date) || []),
-                    ...(logDates?.map(l => l.completed_at) || []),
+                    ...tasks.map(t => t.date),
+                    ...habitLogs.map(l => l.completed_at),
                 ])
 
                 // Calculate current streak
                 const today = new Date()
                 let streak = 0
-                let checkDate = new Date(today)
+                const checkDate = new Date(today)
 
                 while (true) {
                     const dateStr = checkDate.toISOString().split('T')[0]
@@ -64,8 +48,8 @@ export function useProfile(userId: string | null) {
                 }
 
                 setStats({
-                    totalTasksCompleted: tasksCount || 0,
-                    totalHabitLogs: logsCount || 0,
+                    totalTasksCompleted: completedTasks,
+                    totalHabitLogs: habitLogs.length,
                     daysActive: allDates.size,
                     currentStreak: streak,
                 })

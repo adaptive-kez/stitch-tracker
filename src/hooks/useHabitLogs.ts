@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { habitLogsApi, type DbHabitLog } from '@/lib/api'
 import type { HabitLog } from '@/types'
+
+function toHabitLog(row: DbHabitLog): HabitLog {
+    return {
+        id: row.id,
+        habit_id: row.habit_id,
+        user_id: row.user_id,
+        completed_at: row.completed_at,
+    }
+}
 
 export function useHabitLogs(userId: string | null) {
     const [logs, setLogs] = useState<HabitLog[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
-    // Load all logs
     const loadLogs = useCallback(async () => {
         if (!userId) return
 
         try {
-            const { data, error } = await supabase
-                .from('habit_logs')
-                .select('*')
-                .eq('user_id', userId)
-                .order('completed_at', { ascending: false })
-
-            if (error) throw error
-            setLogs(data || [])
+            const data = await habitLogsApi.list(userId)
+            setLogs(data.map(toHabitLog))
         } catch (error) {
             console.error('Error loading habit logs:', error)
         } finally {
@@ -32,7 +34,6 @@ export function useHabitLogs(userId: string | null) {
         }
     }, [userId, loadLogs])
 
-    // Toggle habit completion for a date
     const toggleHabitLog = async (habitId: string, date?: string) => {
         if (!userId) return
 
@@ -41,12 +42,10 @@ export function useHabitLogs(userId: string | null) {
             l => l.habit_id === habitId && l.completed_at === logDate
         )
 
-        // Optimistic update for instant UI feedback
+        // Optimistic update
         if (existingLog) {
-            // Remove from local state immediately
             setLogs(prev => prev.filter(l => l.id !== existingLog.id))
         } else {
-            // Add to local state immediately with temp ID
             const tempLog: HabitLog = {
                 id: `temp-${Date.now()}`,
                 habit_id: habitId,
@@ -58,61 +57,38 @@ export function useHabitLogs(userId: string | null) {
 
         try {
             if (existingLog) {
-                // Remove log from DB
-                const { error } = await supabase
-                    .from('habit_logs')
-                    .delete()
-                    .eq('id', existingLog.id)
-
-                if (error) {
-                    // Rollback on error
-                    setLogs(prev => [existingLog, ...prev])
-                    throw error
-                }
+                await habitLogsApi.delete(userId, habitId, logDate)
             } else {
-                // Add log to DB
-                console.log('Inserting habit log:', { habitId, userId, logDate })
-                const { data, error } = await supabase
-                    .from('habit_logs')
-                    .insert({
-                        habit_id: habitId,
-                        user_id: userId,
-                        completed_at: logDate,
-                    })
-                    .select()
-                    .single()
+                const data = await habitLogsApi.create(userId, {
+                    habit_id: habitId,
+                    completed_at: logDate,
+                })
 
-                if (error) {
-                    // Rollback on error
-                    setLogs(prev => prev.filter(l => !l.id.startsWith('temp-')))
-                    throw error
-                }
-
-                // Replace temp with real data
                 setLogs(prev => prev.map(l =>
                     l.id.startsWith('temp-') && l.habit_id === habitId && l.completed_at === logDate
-                        ? data
+                        ? toHabitLog(data)
                         : l
                 ))
             }
         } catch (error) {
             console.error('Habit log error:', error)
-            // Silently fail - optimistic update already reverted
+            if (existingLog) {
+                setLogs(prev => [existingLog, ...prev])
+            } else {
+                setLogs(prev => prev.filter(l => !l.id.startsWith('temp-')))
+            }
         }
     }
 
-    // Check if habit is completed for a date
     const isHabitCompleted = (habitId: string, date?: string) => {
         const checkDate = date || new Date().toISOString().split('T')[0]
         return logs.some(l => l.habit_id === habitId && l.completed_at === checkDate)
     }
 
-    // Get logs for a specific date
     const getLogsByDate = (date: string) => {
         return logs.filter(l => l.completed_at === date)
     }
 
-    // Count completed habits for a date
     const getCompletedCount = (date?: string) => {
         const checkDate = date || new Date().toISOString().split('T')[0]
         return logs.filter(l => l.completed_at === checkDate).length

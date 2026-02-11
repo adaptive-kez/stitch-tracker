@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { User, TelegramUser } from '@/types'
+import { profileApi, type DbProfile } from '@/lib/api'
+import type { User, TelegramUser, SubscriptionStatus } from '@/types'
 
 interface UseUserState {
     user: User | null
@@ -9,6 +9,25 @@ interface UseUserState {
 }
 
 const LOCAL_USER_KEY = 'stitch_tracker_user'
+
+function profileToUser(p: DbProfile): User {
+    return {
+        id: p.id,
+        user_id: p.user_id,
+        username: p.username || undefined,
+        first_name: p.first_name || undefined,
+        last_name: p.last_name || undefined,
+        avatar_url: p.avatar_url || undefined,
+        email: p.email || undefined,
+        timezone: p.timezone || 'Europe/Moscow',
+        subscription_status: (p.subscription_status || 'inactive') as SubscriptionStatus,
+        auto_renewal: !!p.auto_renewal,
+        morning_summary_time: p.morning_summary_time || '09:00',
+        evening_summary_time: p.evening_summary_time || '21:00',
+        summaries_enabled: !!p.summaries_enabled,
+        created_at: p.created_at,
+    }
+}
 
 export function useUser(telegramUser: TelegramUser | null) {
     const [state, setState] = useState<UseUserState>({
@@ -33,7 +52,6 @@ export function useUser(telegramUser: TelegramUser | null) {
                     const parsed = JSON.parse(storedUser)
                     if (parsed.user_id === userId) {
                         setState({ user: parsed, isLoading: false, error: null })
-                        // Continue to sync with server in background
                     }
                 } catch {
                     // Invalid stored data, continue
@@ -41,56 +59,21 @@ export function useUser(telegramUser: TelegramUser | null) {
             }
 
             try {
-                // Check if user exists in Supabase by telegram_id
-                const telegramId = telegramUser.id // Use numeric ID directly
-                const { data: existingUser, error: fetchError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('telegram_id', telegramId)
-                    .single()
+                // Upsert profile via Worker API
+                const profile = await profileApi.upsert(userId, {
+                    username: telegramUser.username || undefined,
+                    first_name: telegramUser.first_name,
+                    last_name: telegramUser.last_name || undefined,
+                    avatar_url: telegramUser.photo_url || undefined,
+                })
 
-                if (fetchError && fetchError.code !== 'PGRST116') {
-                    throw fetchError
-                }
-
-                if (existingUser) {
-                    // Update user info if needed
-                    const { data: updatedUser } = await supabase
-                        .from('users')
-                        .update({
-                            username: telegramUser.username || undefined,
-                            first_name: telegramUser.first_name,
-                            last_name: telegramUser.last_name || undefined,
-                            photo_url: telegramUser.photo_url || undefined,
-                        })
-                        .eq('telegram_id', telegramId)
-                        .select()
-                        .single()
-
-                    const user = updatedUser || existingUser
+                if (profile) {
+                    const user = profileToUser(profile)
                     localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user))
                     setState({ user, isLoading: false, error: null })
-                } else {
-                    // Create new user
-                    const { data: newUser, error: createError } = await supabase
-                        .from('users')
-                        .insert({
-                            telegram_id: telegramId,
-                            username: telegramUser.username || undefined,
-                            first_name: telegramUser.first_name,
-                            last_name: telegramUser.last_name || undefined,
-                            photo_url: telegramUser.photo_url || undefined,
-                        })
-                        .select()
-                        .single()
-
-                    if (createError) throw createError
-
-                    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(newUser))
-                    setState({ user: newUser, isLoading: false, error: null })
                 }
             } catch (error) {
-                // Fallback: create local user
+                console.error('Error syncing user profile:', error)
                 const localUser: User = {
                     id: crypto.randomUUID(),
                     user_id: userId,
@@ -114,7 +97,6 @@ export function useUser(telegramUser: TelegramUser | null) {
         fetchOrCreateUser()
     }, [telegramUser])
 
-    // Update user profile
     const updateProfile = useCallback(async (data: {
         firstName: string
         lastName?: string
@@ -124,29 +106,13 @@ export function useUser(telegramUser: TelegramUser | null) {
         if (!state.user) return false
 
         try {
-            const { data: updatedUser, error } = await supabase
-                .from('users')
-                .update({
-                    first_name: data.firstName,
-                    last_name: data.lastName || null,
-                    email: data.email || null,
-                    timezone: data.timezone,
-                })
-                .eq('user_id', state.user.user_id)
-                .select()
-                .single()
+            await profileApi.upsert(state.user.user_id, {
+                first_name: data.firstName,
+                last_name: data.lastName || null,
+                email: data.email || null,
+                timezone: data.timezone,
+            })
 
-            if (error) throw error
-
-            // Update local state
-            setState(prev => ({
-                ...prev,
-                user: updatedUser,
-            }))
-            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updatedUser))
-            return true
-        } catch (error) {
-            // Fallback: update locally
             const updatedUser = {
                 ...state.user,
                 first_name: data.firstName,
@@ -154,10 +120,19 @@ export function useUser(telegramUser: TelegramUser | null) {
                 email: data.email,
                 timezone: data.timezone,
             }
-            setState(prev => ({
-                ...prev,
-                user: updatedUser,
-            }))
+            setState(prev => ({ ...prev, user: updatedUser }))
+            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updatedUser))
+            return true
+        } catch (error) {
+            console.error('Error updating profile:', error)
+            const updatedUser = {
+                ...state.user,
+                first_name: data.firstName,
+                last_name: data.lastName,
+                email: data.email,
+                timezone: data.timezone,
+            }
+            setState(prev => ({ ...prev, user: updatedUser }))
             localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updatedUser))
             return true
         }
@@ -168,4 +143,3 @@ export function useUser(telegramUser: TelegramUser | null) {
         updateProfile,
     }
 }
-

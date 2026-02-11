@@ -1,12 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { tasksApi, type DbTask } from '@/lib/api'
 import type { Task } from '@/types'
+
+// Convert D1 row (INTEGER booleans, JSON strings) to Task type
+function toTask(row: DbTask): Task {
+    return {
+        id: row.id,
+        user_id: row.user_id,
+        title: row.title,
+        is_completed: !!row.is_completed,
+        date: row.date,
+        is_important: !!row.is_important,
+        has_notification: !!row.has_notification,
+        notification_time: row.notification_time || undefined,
+        timezone: row.timezone || undefined,
+        recurrence_rule: row.recurrence_rule ? JSON.parse(row.recurrence_rule) : undefined,
+        created_at: row.created_at,
+        updated_at: row.updated_at || undefined,
+    }
+}
 
 export function useTasks(userId: string | null) {
     const [tasks, setTasks] = useState<Task[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
-    // Load tasks
     const loadTasks = useCallback(async () => {
         if (!userId) {
             setIsLoading(false)
@@ -14,17 +31,10 @@ export function useTasks(userId: string | null) {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
-            setTasks(data || [])
+            const data = await tasksApi.list(userId)
+            setTasks(data.map(toTask))
         } catch (error) {
             console.error('Error loading tasks:', error)
-            // Fallback to localStorage
             const stored = localStorage.getItem(`tasks_${userId}`)
             if (stored) setTasks(JSON.parse(stored))
         } finally {
@@ -36,15 +46,12 @@ export function useTasks(userId: string | null) {
         loadTasks()
     }, [loadTasks])
 
-    // Save to localStorage as backup
     useEffect(() => {
         if (userId && tasks.length > 0) {
             localStorage.setItem(`tasks_${userId}`, JSON.stringify(tasks))
         }
     }, [tasks, userId])
 
-
-    // Helper function to generate dates based on recurrence rule
     const generateRecurringDates = (startDate: string, rule: { type: string; interval?: number; days?: number[] }, daysAhead: number = 30): string[] => {
         const dates: string[] = []
         const start = new Date(startDate + 'T12:00:00')
@@ -52,7 +59,7 @@ export function useTasks(userId: string | null) {
         end.setDate(end.getDate() + daysAhead)
 
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, etc.
+            const dayOfWeek = d.getDay()
             const dateStr = d.toISOString().split('T')[0]
 
             switch (rule.type) {
@@ -65,10 +72,11 @@ export function useTasks(userId: string | null) {
                 case 'weekends':
                     if (dayOfWeek === 0 || dayOfWeek === 6) dates.push(dateStr)
                     break
-                case 'every_n':
+                case 'every_n': {
                     const daysDiff = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
                     if (daysDiff % (rule.interval || 1) === 0) dates.push(dateStr)
                     break
+                }
                 case 'specific_days':
                     if (rule.days?.includes(dayOfWeek)) dates.push(dateStr)
                     break
@@ -77,7 +85,6 @@ export function useTasks(userId: string | null) {
         return dates
     }
 
-    // Add task (with recurrence support)
     const addTask = async (taskData: {
         title: string
         date?: string
@@ -91,34 +98,26 @@ export function useTasks(userId: string | null) {
         const { title, date, isImportant, hasNotification, notificationTime, recurrenceRule } = taskData
         const taskDate = date || new Date().toISOString().split('T')[0]
 
-        // Generate dates based on recurrence
         let datesToCreate: string[] = [taskDate]
         if (recurrenceRule && recurrenceRule.type !== 'once') {
             datesToCreate = generateRecurringDates(taskDate, recurrenceRule, 30)
         }
 
         try {
-            const tasksToInsert = datesToCreate.map(d => ({
-                user_id: userId,
+            const tasksToInsert: Partial<DbTask>[] = datesToCreate.map(d => ({
                 title,
                 date: d,
-                is_completed: false,
-                is_important: isImportant || false,
-                has_notification: hasNotification || false,
+                is_completed: 0,
+                is_important: isImportant ? 1 : 0,
+                has_notification: hasNotification ? 1 : 0,
                 notification_time: notificationTime || null,
-                recurrence_rule: recurrenceRule || null,
+                recurrence_rule: recurrenceRule ? JSON.stringify(recurrenceRule) : null,
             }))
 
-            const { data, error } = await supabase
-                .from('tasks')
-                .insert(tasksToInsert)
-                .select()
-
-            if (error) throw error
-            setTasks(prev => [...(data || []), ...prev])
+            const data = await tasksApi.create(userId, tasksToInsert)
+            setTasks(prev => [...data.map(toTask), ...prev])
         } catch (error) {
             console.error('Error adding task:', error)
-            // Fallback: add locally
             const newTasks: Task[] = datesToCreate.map(d => ({
                 id: crypto.randomUUID(),
                 user_id: userId,
@@ -135,60 +134,39 @@ export function useTasks(userId: string | null) {
         }
     }
 
-    // Toggle task
     const toggleTask = async (taskId: string) => {
         const task = tasks.find(t => t.id === taskId)
         if (!task) return
 
-        try {
-            const { error } = await supabase
-                .from('tasks')
-                .update({ is_completed: !task.is_completed })
-                .eq('id', taskId)
-
-            if (error) throw error
-            setTasks(prev =>
-                prev.map(t =>
-                    t.id === taskId ? { ...t, is_completed: !t.is_completed } : t
-                )
+        setTasks(prev =>
+            prev.map(t =>
+                t.id === taskId ? { ...t, is_completed: !t.is_completed } : t
             )
+        )
+
+        try {
+            await tasksApi.update(userId!, taskId, { is_completed: task.is_completed ? 0 : 1 })
         } catch (error) {
             console.error('Error toggling task:', error)
-            // Fallback: update locally
-            setTasks(prev =>
-                prev.map(t =>
-                    t.id === taskId ? { ...t, is_completed: !t.is_completed } : t
-                )
-            )
         }
     }
 
-    // Delete task
     const deleteTask = async (taskId: string) => {
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .delete()
-                .eq('id', taskId)
-
-            if (error) throw error
+            await tasksApi.delete(userId!, taskId)
             setTasks(prev => prev.filter(t => t.id !== taskId))
         } catch (error) {
             console.error('Error deleting task:', error)
-            // Fallback: delete locally
             setTasks(prev => prev.filter(t => t.id !== taskId))
         }
     }
 
-    // Delete all tasks in a recurrence group (same title + recurrence_rule)
     const deleteRecurringTasks = async (taskId: string) => {
         const task = tasks.find(t => t.id === taskId)
         if (!task || !task.recurrence_rule) {
-            // Not a recurring task, just delete the single one
             return deleteTask(taskId)
         }
 
-        // Find all tasks with matching title + recurrence_rule
         const groupIds = tasks
             .filter(t =>
                 t.title === task.title &&
@@ -198,16 +176,10 @@ export function useTasks(userId: string | null) {
             .map(t => t.id)
 
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .delete()
-                .in('id', groupIds)
-
-            if (error) throw error
+            await tasksApi.deleteMany(userId!, groupIds)
             setTasks(prev => prev.filter(t => !groupIds.includes(t.id)))
         } catch (error) {
             console.error('Error deleting recurring tasks:', error)
-            // Fallback: delete locally
             setTasks(prev => prev.filter(t => !groupIds.includes(t.id)))
         }
     }
