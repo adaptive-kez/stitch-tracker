@@ -9,6 +9,72 @@ export interface Env {
     ENVIRONMENT: string
     NOTIFICATION_WORKER_URL: string
     NOTIFICATION_SECRET: string
+    BOT_TOKEN: string
+}
+
+// --- Telegram initData HMAC-SHA256 Validation ---
+const encoder = new TextEncoder()
+
+async function hmacSha256(key: BufferSource, data: string): Promise<ArrayBuffer> {
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    )
+    return crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data))
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+interface InitDataValidation {
+    valid: boolean
+    userId?: string
+    error?: string
+}
+
+async function validateInitData(initData: string, botToken: string): Promise<InitDataValidation> {
+    if (!initData) return { valid: false, error: 'Missing initData' }
+
+    try {
+        const params = new URLSearchParams(initData)
+        const hash = params.get('hash')
+        if (!hash) return { valid: false, error: 'Missing hash in initData' }
+
+        // Build data_check_string: sort params alphabetically (excluding hash)
+        params.delete('hash')
+        const dataCheckString = [...params.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n')
+
+        // Derive secret key: HMAC-SHA256("WebAppData", botToken)
+        const secretKey = await hmacSha256(encoder.encode('WebAppData'), botToken)
+
+        // Compute hash: HMAC-SHA256(secretKey, dataCheckString)
+        const computedHash = bufToHex(await hmacSha256(secretKey, dataCheckString))
+
+        if (computedHash !== hash) {
+            return { valid: false, error: 'Invalid hash' }
+        }
+
+        // Check auth_date freshness (5 minutes)
+        const authDate = parseInt(params.get('auth_date') || '0')
+        const now = Math.floor(Date.now() / 1000)
+        if (now - authDate > 300) {
+            return { valid: false, error: 'initData expired (>5 min)' }
+        }
+
+        // Extract user_id from user JSON
+        const userJson = params.get('user')
+        if (!userJson) return { valid: false, error: 'Missing user in initData' }
+
+        const user = JSON.parse(userJson)
+        if (!user.id) return { valid: false, error: 'Missing user.id in initData' }
+
+        return { valid: true, userId: String(user.id) }
+    } catch (e) {
+        return { valid: false, error: `Validation error: ${(e as Error).message}` }
+    }
 }
 
 // Allowed origins for CORS
@@ -24,7 +90,7 @@ function getCorsHeaders(request: Request) {
     return {
         'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-User-Id',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Telegram-Init-Data, X-User-Id',
     }
 }
 
@@ -43,9 +109,21 @@ function uuid(): string {
     return crypto.randomUUID()
 }
 
-// Extract user_id from header (set by frontend)
-function getUserId(request: Request): string | null {
-    return request.headers.get('X-User-Id')
+// Authenticate user: validate initData in production, allow X-User-Id in dev
+async function getAuthenticatedUserId(request: Request, env: Env): Promise<InitDataValidation> {
+    // Try initData first (production flow)
+    const initData = request.headers.get('X-Telegram-Init-Data')
+    if (initData) {
+        return validateInitData(initData, env.BOT_TOKEN)
+    }
+
+    // Dev fallback: allow X-User-Id header only in non-production
+    if (env.ENVIRONMENT !== 'production') {
+        const userId = request.headers.get('X-User-Id')
+        if (userId) return { valid: true, userId }
+    }
+
+    return { valid: false, error: 'Missing authentication (X-Telegram-Init-Data header required)' }
 }
 
 export default {
@@ -74,31 +152,35 @@ export default {
             })
         }
 
-        // --- Rate Limiting ---
-        if (path !== '/api/health') {
-            const rateLimitUserId = getUserId(request)
-            if (rateLimitUserId) {
-                const isWrite = method === 'POST' || method === 'PUT' || method === 'DELETE'
-                const bucket = isWrite ? 'w' : 'r'
-                const limit = isWrite ? 20 : 60
-                const minute = Math.floor(Date.now() / 60000)
-                const rateKey = `rate:${rateLimitUserId}:${bucket}:${minute}`
+        // --- Authentication & Rate Limiting ---
+        let userId: string | null = null
 
-                const current = parseInt(await env.CACHE.get(rateKey) || '0')
-                if (current >= limit) {
-                    return withCors(error(`Rate limit exceeded (${limit}/${bucket === 'w' ? 'writes' : 'reads'} per minute)`, 429))
-                }
-                // Fire-and-forget: don't await KV write to avoid latency
-                env.CACHE.put(rateKey, String(current + 1), { expirationTtl: 60 })
+        if (path !== '/api/health') {
+            const auth = await getAuthenticatedUserId(request, env)
+            if (!auth.valid) {
+                return withCors(error(auth.error || 'Unauthorized', 401))
             }
+            userId = auth.userId!
+
+            // Rate limiting (using authenticated userId)
+            const isWrite = method === 'POST' || method === 'PUT' || method === 'DELETE'
+            const bucket = isWrite ? 'w' : 'r'
+            const limit = isWrite ? 20 : 60
+            const minute = Math.floor(Date.now() / 60000)
+            const rateKey = `rate:${userId}:${bucket}:${minute}`
+
+            const current = parseInt(await env.CACHE.get(rateKey) || '0')
+            if (current >= limit) {
+                return withCors(error(`Rate limit exceeded (${limit}/${bucket === 'w' ? 'writes' : 'reads'} per minute)`, 429))
+            }
+            env.CACHE.put(rateKey, String(current + 1), { expirationTtl: 60 })
         }
 
         const response = await (async (): Promise<Response> => {
             try {
                 // --- TASKS ---
                 if (path === '/api/tasks') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         const rows = await env.DB.prepare(
@@ -154,8 +236,7 @@ export default {
 
                 // --- TASKS UPDATE (toggle, etc.) ---
                 if (path.startsWith('/api/tasks/') && method === 'PUT') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
                     const taskId = path.split('/api/tasks/')[1]
                     const body = await request.json() as Record<string, unknown>
 
@@ -187,8 +268,7 @@ export default {
 
                 // --- HABITS ---
                 if (path === '/api/habits') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         const rows = await env.DB.prepare(
@@ -231,8 +311,7 @@ export default {
 
                 // --- HABIT LOGS ---
                 if (path === '/api/habit-logs') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         const rows = await env.DB.prepare(
@@ -267,8 +346,7 @@ export default {
 
                 // --- JOURNAL ---
                 if (path === '/api/journal') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         const rows = await env.DB.prepare(
@@ -304,8 +382,7 @@ export default {
 
                 // --- GOALS ---
                 if (path === '/api/goals') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         const rows = await env.DB.prepare(
@@ -342,8 +419,7 @@ export default {
 
                 // --- GOALS UPDATE ---
                 if (path.startsWith('/api/goals/') && method === 'PUT') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
                     const goalId = path.split('/api/goals/')[1]
                     const body = await request.json() as Record<string, unknown>
 
@@ -374,8 +450,7 @@ export default {
 
                 // --- PROFILE (with KV cache) ---
                 if (path === '/api/profile') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'GET') {
                         // Try KV cache first
@@ -454,8 +529,7 @@ export default {
 
                 // --- NOTIFICATIONS ---
                 if (path === '/api/notifications') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     if (method === 'POST') {
                         const body = await request.json() as Record<string, unknown>
@@ -477,8 +551,7 @@ export default {
 
                 // --- NOTIFY PROXY (secured) ---
                 if (path === '/api/notify/send' || path === '/api/notify/schedule') {
-                    const userId = getUserId(request)
-                    if (!userId) return error('Missing X-User-Id header', 401)
+                    if (!userId) return error('Unauthorized', 401)
 
                     const body = await request.json() as Record<string, unknown>
 

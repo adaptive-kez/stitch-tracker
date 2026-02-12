@@ -1,7 +1,9 @@
 /**
  * API Client for Cloudflare Worker (D1 + KV)
- * Replaces @supabase/supabase-js direct calls
+ * Uses Telegram initData for authentication
  */
+
+import WebApp from '@twa-dev/sdk'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -17,7 +19,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     }
-    if (userId) {
+
+    // Production: send Telegram initData for HMAC validation
+    const initData = WebApp.initData
+    if (initData) {
+        headers['X-Telegram-Init-Data'] = initData
+    } else if (userId) {
+        // Dev fallback: X-User-Id only works in non-production Worker
         headers['X-User-Id'] = userId
     }
 
@@ -34,6 +42,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
     return res.json() as Promise<T>
 }
+
 
 // ========================================
 // Tasks API

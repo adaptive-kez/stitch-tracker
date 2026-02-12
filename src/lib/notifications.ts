@@ -3,6 +3,8 @@
  * Routes through main D1 Worker → Notification Worker (secured)
  */
 
+import WebApp from '@twa-dev/sdk'
+
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 export interface NotificationPayload {
@@ -16,6 +18,19 @@ export interface ScheduledNotification extends NotificationPayload {
     scheduledTime: string // ISO datetime
 }
 
+function getAuthHeaders(chatId: number | string): Record<string, string> {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    }
+    const initData = WebApp.initData
+    if (initData) {
+        headers['X-Telegram-Init-Data'] = initData
+    } else {
+        headers['X-User-Id'] = String(chatId)
+    }
+    return headers
+}
+
 /**
  * Send immediate notification (proxied through main Worker)
  */
@@ -25,10 +40,7 @@ export async function sendNotification(
     try {
         const response = await fetch(`${API_URL}/api/notify/send`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-User-Id': String(payload.chatId),
-            },
+            headers: getAuthHeaders(payload.chatId),
             body: JSON.stringify(payload),
         })
 
@@ -47,10 +59,7 @@ export async function scheduleNotification(
     try {
         const response = await fetch(`${API_URL}/api/notify/schedule`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-User-Id': String(payload.chatId),
-            },
+            headers: getAuthHeaders(payload.chatId),
             body: JSON.stringify(payload),
         })
 
