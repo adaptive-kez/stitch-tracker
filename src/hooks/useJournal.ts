@@ -39,20 +39,34 @@ export function useJournal(userId: string | null) {
     const addEntry = async (type: JournalType, content: string, date?: string) => {
         if (!userId || !content.trim()) return null
 
+        const entryDate = date || new Date().toISOString().split('T')[0]
+
+        // Optimistic: show entry immediately
+        const tempEntry: JournalEntry = {
+            id: `temp-${Date.now()}`,
+            user_id: userId,
+            type,
+            content: content.trim(),
+            date: entryDate,
+            created_at: new Date().toISOString(),
+        }
+        setEntries(prev => [tempEntry, ...prev])
+
         try {
-            const entryDate = date || new Date().toISOString().split('T')[0]
             const data = await journalApi.create(userId, {
                 type,
                 content: content.trim(),
                 date: entryDate,
             })
 
+            // Replace temp with real server entry
             const entry = toJournalEntry(data)
-            setEntries(prev => [entry, ...prev])
+            setEntries(prev => prev.map(e => e.id === tempEntry.id ? entry : e))
             return entry
         } catch (error) {
-            console.error('Error adding journal entry:', error)
-            return null
+            // Keep temp entry — don't revert, user intent preserved
+            console.warn('Journal sync error (kept locally):', error)
+            return tempEntry
         }
     }
 

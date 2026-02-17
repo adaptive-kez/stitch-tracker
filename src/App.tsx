@@ -72,7 +72,8 @@ function App() {
     goals,
     isLoading: goalsLoading,
     addGoal,
-    toggleGoal
+    toggleGoal,
+    deleteGoal
   } = useGoals(userId)
 
   // Habit logs for tracking completion
@@ -299,6 +300,7 @@ function App() {
               goals={transformedGoals}
               onAddGoal={handleAddGoal}
               onToggleGoal={toggleGoal}
+              onDeleteGoal={deleteGoal}
             />
           </Suspense>
         )

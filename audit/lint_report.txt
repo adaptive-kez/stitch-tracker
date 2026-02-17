@@ -1,0 +1,119 @@
+
+> stitch-tracker@0.0.0 lint
+> eslint .
+
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/.tmp/antigravity-awesome-skills/skills/loki-mode/examples/todo-app-generated/backend/src/routes/todos.ts
+    9:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   50:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   78:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/.tmp/antigravity-awesome-skills/skills/radix-ui-design-system/templates/component-template.tsx
+  11:12  error  Parsing error: Identifier expected
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/.tmp/antigravity-awesome-skills/skills/typescript-expert/references/utility-types.ts
+   71:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  183:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  183:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  251:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  333:33  error  '_value' is defined but never used        @typescript-eslint/no-unused-vars
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/components/ui/FrequencySelector.tsx
+   39:8   warning  React Hook useEffect has missing dependencies: 'onChange' and 'value'. Either include them or remove the dependency array. If 'onChange' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+   46:8   warning  React Hook useEffect has missing dependencies: 'onChange' and 'value'. Either include them or remove the dependency array. If 'onChange' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+  142:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                 react-refresh/only-export-components
+  156:13  error    Unexpected lexical declaration in case block                                                                                                                                                                                                   no-case-declarations
+  164:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                 react-refresh/only-export-components
+  178:13  error    Unexpected lexical declaration in case block                                                                                                                                                                                                   no-case-declarations
+  179:13  error    Unexpected lexical declaration in case block                                                                                                                                                                                                   no-case-declarations
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/components/ui/button.tsx
+  64:18  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/hooks/useJournal.ts
+  20:44  error  '_date' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/hooks/useTelegram.ts
+  26:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/hooks/useTelegram.ts:26:9
+  24 |         const theme = getTelegramTheme()
+  25 |
+> 26 |         setState({
+     |         ^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |             user,
+  28 |             theme,
+  29 |             isReady: true,  react-hooks/set-state-in-effect
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/hooks/useUser.ts
+  41:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/hooks/useUser.ts:41:13
+  39 |     useEffect(() => {
+  40 |         if (!telegramUser) {
+> 41 |             setState({ user: null, isLoading: false, error: null })
+     |             ^^^^^^^^ Avoid calling setState() directly within an effect
+  42 |             return
+  43 |         }
+  44 |  react-hooks/set-state-in-effect
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/screens/AnalyticsScreen.tsx
+  179:13  error  'checkDate' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/screens/GoalsScreen.tsx
+  165:18  error  Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/screens/GoalsScreen.tsx:165:18
+  163 |         return (
+  164 |             <>
+> 165 |                 <DeadlinePickerModal />
+      |                  ^^^^^^^^^^^^^^^^^^^ This component is created during render
+  166 |                 <div className="flex-1 px-4 py-4 space-y-4">
+  167 |                     {/* Header */}
+  168 |                     <div className="flex items-center justify-between">
+
+/Users/skaleush/.gemini/antigravity/scratch/stitch-tracker/src/screens/GoalsScreen.tsx:61:33
+   59 |
+   60 |     // Deadline Date Picker Modal
+>  61 |     const DeadlinePickerModal = () => (
+      |                                 ^^^^^^^
+>  62 |         <AnimatePresence>
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+>  63 |             {showDeadlinePicker && (
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 158 |         </AnimatePresence>
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 159 |     )
+      | ^^^^^^ The component is created during render here
+  160 |
+  161 |     // Full screen add form
+  162 |     if (isAdding) {  react-hooks/static-components
+
+✖ 32 problems (30 errors, 2 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

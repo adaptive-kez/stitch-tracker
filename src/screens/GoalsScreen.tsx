@@ -1,5 +1,6 @@
-import { Plus, ChevronLeft, X, Target, Check } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, ChevronLeft, X, Target, Check, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
 import { StitchMascot } from '@/components/StitchMascot'
 
@@ -15,9 +16,58 @@ interface GoalsScreenProps {
     goals: Goal[]
     onAddGoal: (goal: { title: string; year: number; deadline?: string }) => void
     onToggleGoal?: (id: string) => void
+    onDeleteGoal?: (id: string) => void
 }
 
-export function GoalsScreen({ goals, onAddGoal, onToggleGoal }: GoalsScreenProps) {
+// Swipeable Goal Component — swipe left to delete
+function SwipeableGoal({
+    goal,
+    children,
+    onDelete,
+}: {
+    goal: Goal
+    children: React.ReactNode
+    onDelete?: (id: string) => void
+}) {
+    const x = useMotionValue(0)
+    const background = useTransform(
+        x,
+        [-100, 0],
+        ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
+    )
+    const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+
+    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (info.offset.x < -100 && onDelete) {
+            onDelete(goal.id)
+        }
+    }
+
+    return (
+        <div className="relative overflow-hidden rounded-xl">
+            <motion.div
+                style={{ background }}
+                className="absolute inset-0 flex items-center justify-end pr-4 rounded-xl"
+            >
+                <motion.div style={{ opacity: deleteOpacity }}>
+                    <Trash2 size={20} className="text-white" />
+                </motion.div>
+            </motion.div>
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: -150, right: 0 }}
+                dragElastic={0.1}
+                onDragEnd={handleDragEnd}
+                style={{ x }}
+                className="relative z-10 cursor-grab active:cursor-grabbing"
+            >
+                {children}
+            </motion.div>
+        </div>
+    )
+}
+
+export function GoalsScreen({ goals, onAddGoal, onToggleGoal, onDeleteGoal }: GoalsScreenProps) {
     const currentYear = new Date().getFullYear()
     const years = [2026, 2027, 2028, 2029, 2030]
 
@@ -267,38 +317,39 @@ export function GoalsScreen({ goals, onAddGoal, onToggleGoal }: GoalsScreenProps
             ) : (
                 <div className="space-y-3">
                     {filteredGoals.map((goal) => (
-                        <motion.div
-                            key={goal.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`p-4 rounded-xl bg-[var(--bg-card)] ${goal.isCompleted ? 'opacity-70' : ''}`}
-                        >
-                            <div className="flex items-start gap-3">
-                                {/* Completion Checkbox */}
-                                <motion.button
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => onToggleGoal?.(goal.id)}
-                                    className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer border-2 transition-colors ${goal.isCompleted
-                                        ? 'bg-green-500 border-green-500'
-                                        : 'bg-transparent border-[var(--text-secondary)]'
-                                        }`}
-                                >
-                                    {goal.isCompleted && <Check size={16} className="text-white" />}
-                                </motion.button>
+                        <SwipeableGoal key={goal.id} goal={goal} onDelete={onDeleteGoal}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`p-4 rounded-xl bg-[var(--bg-card)] ${goal.isCompleted ? 'opacity-70' : ''}`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    {/* Completion Checkbox */}
+                                    <motion.button
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => onToggleGoal?.(goal.id)}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer border-2 transition-colors ${goal.isCompleted
+                                            ? 'bg-green-500 border-green-500'
+                                            : 'bg-transparent border-[var(--text-secondary)]'
+                                            }`}
+                                    >
+                                        {goal.isCompleted && <Check size={16} className="text-white" />}
+                                    </motion.button>
 
-                                <div className="flex-1">
-                                    <div className={`font-medium ${goal.isCompleted ? 'line-through text-[var(--text-secondary)]' : ''}`}>
-                                        {goal.title}
-                                    </div>
-                                    {goal.deadline && (
-                                        <div className="flex items-center gap-1 text-sm text-[var(--text-secondary)] mt-1">
-                                            <Target size={14} />
-                                            <span>Дедлайн: {goal.deadline}</span>
+                                    <div className="flex-1">
+                                        <div className={`font-medium ${goal.isCompleted ? 'line-through text-[var(--text-secondary)]' : ''}`}>
+                                            {goal.title}
                                         </div>
-                                    )}
+                                        {goal.deadline && (
+                                            <div className="flex items-center gap-1 text-sm text-[var(--text-secondary)] mt-1">
+                                                <Target size={14} />
+                                                <span>Дедлайн: {goal.deadline}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </motion.div>
+                            </motion.div>
+                        </SwipeableGoal>
                     ))}
                 </div>
             )}
