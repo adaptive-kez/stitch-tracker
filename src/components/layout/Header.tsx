@@ -10,6 +10,7 @@ interface HeaderProps {
     onPrevious?: () => void
     onNext?: () => void
     onCalendar?: () => void
+    onGoToToday?: () => void
     onSettings?: () => void
     // Telegram user data
     user?: {
@@ -27,6 +28,7 @@ export function Header({
     onPrevious,
     onNext,
     onCalendar,
+    onGoToToday,
     onSettings,
     user,
 }: HeaderProps) {
@@ -68,6 +70,7 @@ export function Header({
                     <motion.button
                         whileTap={{ scale: 0.98 }}
                         onClick={onCalendar}
+                        onDoubleClick={(e) => { e.preventDefault(); onGoToToday?.() }}
                         className="flex-1 py-2 px-4 rounded-full bg-[var(--bg-button)] text-center cursor-pointer"
                     >
                         <div className="text-sm font-medium text-[var(--text-primary)]">{title}</div>

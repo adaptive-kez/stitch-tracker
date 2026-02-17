@@ -330,6 +330,7 @@ function App() {
             onPrevious={goToPreviousDay}
             onNext={goToNextDay}
             onCalendar={() => setShowCalendar(!showCalendar)}
+            onGoToToday={() => setSelectedDate(new Date())}
             onSettings={() => setShowSettings(true)}
             user={telegramUser ? {
               firstName: dbUser?.first_name || telegramUser.first_name,
