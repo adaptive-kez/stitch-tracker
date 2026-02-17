@@ -57,11 +57,11 @@ async function validateInitData(initData: string, botToken: string): Promise<Ini
             return { valid: false, error: 'Invalid hash' }
         }
 
-        // Check auth_date freshness (5 minutes)
+        // Check auth_date freshness (24 hours — mini-apps stay open for long sessions)
         const authDate = parseInt(params.get('auth_date') || '0')
         const now = Math.floor(Date.now() / 1000)
-        if (now - authDate > 300) {
-            return { valid: false, error: 'initData expired (>5 min)' }
+        if (now - authDate > 86400) {
+            return { valid: false, error: 'initData expired (>24h)' }
         }
 
         // Extract user_id from user JSON

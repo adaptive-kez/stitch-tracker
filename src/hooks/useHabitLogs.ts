@@ -7,7 +7,7 @@ function toHabitLog(row: DbHabitLog): HabitLog {
         id: row.id,
         habit_id: row.habit_id,
         user_id: row.user_id,
-        completed_at: row.completed_at,
+        completed_at: row.completed_at?.split('T')[0] ?? row.completed_at,
     }
 }
 
