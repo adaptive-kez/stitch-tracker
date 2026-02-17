@@ -64,7 +64,8 @@ function App() {
   const {
     habits,
     isLoading: habitsLoading,
-    addHabit
+    addHabit,
+    deleteHabit
   } = useHabits(userId)
 
   const {
@@ -114,26 +115,11 @@ function App() {
       recurrenceRule: t.recurrence_rule,
     }))
 
-  // Calculate completed days for each habit from logs
-  const getCompletedDaysForHabit = (habitId: string): number[] => {
-    // Get current week's dates
-    const today = new Date()
-    const startOfWeek = new Date(today)
-    const dayOfWeek = today.getDay()
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    startOfWeek.setDate(today.getDate() - diffToMonday)
-    startOfWeek.setHours(0, 0, 0, 0)
-
-    const completedDays: number[] = []
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek)
-      date.setDate(startOfWeek.getDate() + i)
-      const dateStr = date.toISOString().split('T')[0]
-      if (isHabitCompleted(habitId, dateStr)) {
-        completedDays.push(i)
-      }
-    }
-    return completedDays
+  // Get all completed dates for a habit (ISO strings)
+  const getCompletedDatesForHabit = (habitId: string): string[] => {
+    return habitLogs
+      .filter(l => l.habit_id === habitId)
+      .map(l => l.completed_at)
   }
 
   // Get completed days of the current month for month view
@@ -157,7 +143,7 @@ function App() {
   const transformedHabits = habits.map(h => ({
     id: h.id,
     title: h.title,
-    completedDays: getCompletedDaysForHabit(h.id),
+    completedDates: getCompletedDatesForHabit(h.id),
     completedDaysOfMonth: getCompletedDaysOfMonth(h.id),
     startDate: h.start_date,
     endDate: h.end_date,
@@ -230,19 +216,8 @@ function App() {
     addGoal(goalData.title)
   }
 
-  // Handle habit day toggle - convert day index to date and call toggleHabitLog
-  const handleToggleHabitDay = (habitId: string, dayIndex: number) => {
-    const today = new Date()
-    const startOfWeek = new Date(today)
-    const dayOfWeek = today.getDay()
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    startOfWeek.setDate(today.getDate() - diffToMonday)
-    startOfWeek.setHours(0, 0, 0, 0)
-
-    const targetDate = new Date(startOfWeek)
-    targetDate.setDate(startOfWeek.getDate() + dayIndex)
-    const dateStr = targetDate.toISOString().split('T')[0]
-
+  // Handle habit day toggle - receives ISO date directly from HabitsScreen
+  const handleToggleHabitDay = (habitId: string, dateStr: string) => {
     toggleHabitLog(habitId, dateStr)
   }
 
@@ -312,6 +287,7 @@ function App() {
               habits={transformedHabits}
               onAddHabit={handleAddHabit}
               onToggleHabitDay={handleToggleHabitDay}
+              onDeleteHabit={deleteHabit}
               selectedDate={selectedDate}
             />
           </Suspense>

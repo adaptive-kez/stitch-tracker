@@ -1,5 +1,6 @@
-import { Plus, LayoutGrid, Calendar, ChevronLeft, Bell, Repeat } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, LayoutGrid, Calendar, ChevronLeft, ChevronRight, Bell, Repeat, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
 import { StitchMascot } from '@/components/StitchMascot'
 import { Switch } from '@/components/ui/switch'
@@ -10,7 +11,7 @@ import { DatePickerModal } from '@/components/ui/DatePickerModal'
 interface Habit {
     id: string
     title: string
-    completedDays: number[]  // Week view: indexes 0-6 (Mon-Sun)
+    completedDates: string[]  // ISO date strings of completed days
     completedDaysOfMonth?: number[]  // Month view: actual day numbers (1-31)
     startDate?: string
     endDate?: string
@@ -28,15 +29,76 @@ interface HabitsScreenProps {
         notificationTime?: string
         recurrenceRule?: RecurrenceRule
     }) => void
-    onToggleHabitDay?: (habitId: string, dayIndex: number) => void
+    onToggleHabitDay?: (habitId: string, dateStr: string) => void
+    onDeleteHabit?: (habitId: string) => void
     selectedDate: Date
 }
 
-export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDate }: HabitsScreenProps) {
+// Helper: format Date to ISO string (YYYY-MM-DD)
+function toISO(date: Date): string {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+}
+
+// Swipeable Habit Component — swipe left to delete
+function SwipeableHabit({
+    habit,
+    children,
+    onDelete,
+}: {
+    habit: Habit
+    children: React.ReactNode
+    onDelete?: (id: string) => void
+}) {
+    const x = useMotionValue(0)
+    const background = useTransform(
+        x,
+        [-100, 0],
+        ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
+    )
+    const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+
+    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (info.offset.x < -100 && onDelete) {
+            onDelete(habit.id)
+        }
+    }
+
+    return (
+        <div className="relative overflow-hidden rounded-xl">
+            {/* Delete indicator */}
+            <motion.div
+                style={{ background }}
+                className="absolute inset-0 flex items-center justify-end pr-4 rounded-xl"
+            >
+                <motion.div style={{ opacity: deleteOpacity }}>
+                    <Trash2 size={20} className="text-white" />
+                </motion.div>
+            </motion.div>
+
+            {/* Swipeable content */}
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: -150, right: 0 }}
+                dragElastic={0.1}
+                onDragEnd={handleDragEnd}
+                style={{ x }}
+                className="relative z-10"
+            >
+                {children}
+            </motion.div>
+        </div>
+    )
+}
+
+export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, onDeleteHabit, selectedDate }: HabitsScreenProps) {
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
     const [isAdding, setIsAdding] = useState(false)
     const [showStartDatePicker, setShowStartDatePicker] = useState(false)
     const [showEndDatePicker, setShowEndDatePicker] = useState(false)
+    const [weekOffset, setWeekOffset] = useState(0) // 0 = current window, -1 = previous, +1 = next
 
     // Form state
     const [newHabitTitle, setNewHabitTitle] = useState('')
@@ -47,8 +109,32 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
     const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>({ type: 'daily' })
     const [showFrequencySelector, setShowFrequencySelector] = useState(false)
 
-    const completedCount = 0
     const totalCount = habits.length
+
+    // Generate 7 dates centered around today with weekOffset
+    const getVisibleDates = (): Date[] => {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const dates: Date[] = []
+        // Center today: show 3 days before, today, 3 days after
+        // weekOffset shifts by 7 days
+        const baseOffset = -3 + (weekOffset * 7)
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(today)
+            d.setDate(today.getDate() + baseOffset + i)
+            dates.push(d)
+        }
+        return dates
+    }
+
+    const visibleDates = getVisibleDates()
+
+    // Count how many habits are completed for today
+    const todayISO = toISO(new Date())
+    const completedCount = habits.filter(h => h.completedDates.includes(todayISO)).length
+
+    // Short day names
+    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
     function formatDateForDisplay(date: Date): string {
         const day = date.getDate()
@@ -58,7 +144,7 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
     }
 
     function formatDateISO(date: Date): string {
-        return date.toISOString().split('T')[0]
+        return toISO(date)
     }
 
     const handleAddHabit = () => {
@@ -82,8 +168,6 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
             setIsAdding(false)
         }
     }
-
-    // Date Picker uses shared component now
 
     // Full screen add form
     if (isAdding) {
@@ -287,94 +371,121 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, selectedDat
             ) : (
                 <div className="space-y-3">
                     {habits.map((habit) => (
-                        <div
+                        <SwipeableHabit
                             key={habit.id}
-                            className="p-4 rounded-xl bg-[var(--bg-card)]"
+                            habit={habit}
+                            onDelete={onDeleteHabit}
                         >
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="font-medium">{habit.title}</span>
-                                <div className="flex items-center gap-2">
-                                    {habit.hasNotification && <Bell size={14} className="text-[var(--accent-blue)]" />}
-                                    <span className="text-xs text-[var(--text-secondary)]">
-                                        {habit.recurrenceRule ? getRecurrenceDescription(habit.recurrenceRule) : 'ежедн.'}
-                                    </span>
+                            <div className="p-4 rounded-xl bg-[var(--bg-card)]">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="font-medium">{habit.title}</span>
+                                    <div className="flex items-center gap-2">
+                                        {habit.hasNotification && <Bell size={14} className="text-[var(--accent-blue)]" />}
+                                        <span className="text-xs text-[var(--text-secondary)]">
+                                            {habit.recurrenceRule ? getRecurrenceDescription(habit.recurrenceRule) : 'ежедн.'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Week Grid */}
-                            {viewMode === 'week' && (() => {
-                                const today = new Date()
-                                const dayOfWeek = today.getDay()
-                                const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-                                const startOfWeek = new Date(today)
-                                startOfWeek.setDate(today.getDate() - diffToMonday)
+                                {/* Week Grid with scrollable dates */}
+                                {viewMode === 'week' && (
+                                    <div className="flex items-center gap-1">
+                                        {/* Left arrow */}
+                                        <motion.button
+                                            whileTap={{ scale: 0.85 }}
+                                            onClick={() => setWeekOffset(prev => prev - 1)}
+                                            className="p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex-shrink-0"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </motion.button>
 
-                                const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+                                        <div className="flex justify-between flex-1 gap-1">
+                                            {visibleDates.map((date) => {
+                                                const dateStr = toISO(date)
+                                                const isCompleted = habit.completedDates.includes(dateStr)
+                                                const isToday = dateStr === todayISO
 
-                                return (
-                                    <div className="flex justify-between gap-1">
-                                        {weekDays.map((day, i) => {
-                                            const date = new Date(startOfWeek)
-                                            date.setDate(startOfWeek.getDate() + i)
-                                            const dayOfMonth = date.getDate()
+                                                return (
+                                                    <div key={dateStr} className="flex flex-col items-center gap-1">
+                                                        <span className={`text-[10px] ${isToday ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-secondary)]'}`}>
+                                                            {dayNames[date.getDay()]}
+                                                        </span>
+                                                        <motion.button
+                                                            whileTap={{ scale: 0.9 }}
+                                                            onClick={() => onToggleHabitDay?.(habit.id, dateStr)}
+                                                            className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors ${isCompleted
+                                                                ? 'bg-[var(--accent-blue)]'
+                                                                : isToday
+                                                                    ? 'bg-[var(--bg-button)] ring-2 ring-[var(--accent-blue)] ring-offset-1 ring-offset-[var(--bg-card)]'
+                                                                    : 'bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)]'
+                                                                }`}
+                                                        >
+                                                            {isCompleted && (
+                                                                <motion.svg
+                                                                    initial={{ scale: 0 }}
+                                                                    animate={{ scale: 1 }}
+                                                                    className="w-4 h-4 text-white"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                </motion.svg>
+                                                            )}
+                                                        </motion.button>
+                                                        <span className={`text-[10px] ${isToday ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-secondary)]'}`}>
+                                                            {String(date.getDate()).padStart(2, '0')}.{String(date.getMonth() + 1).padStart(2, '0')}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
 
-                                            return (
-                                                <div key={day} className="flex flex-col items-center gap-1">
-                                                    <motion.button
-                                                        whileTap={{ scale: 0.9 }}
-                                                        onClick={() => onToggleHabitDay?.(habit.id, i)}
-                                                        className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors ${habit.completedDays.includes(i)
-                                                            ? 'bg-[var(--accent-blue)]'
-                                                            : 'bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)]'
-                                                            }`}
+                                        {/* Right arrow */}
+                                        <motion.button
+                                            whileTap={{ scale: 0.85 }}
+                                            onClick={() => setWeekOffset(prev => prev + 1)}
+                                            className="p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex-shrink-0"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </motion.button>
+                                    </div>
+                                )}
+
+                                {/* Month Grid */}
+                                {viewMode === 'month' && (() => {
+                                    const today = new Date()
+                                    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+                                    const currentDay = today.getDate()
+                                    const completedDaysOfMonth = habit.completedDaysOfMonth || []
+
+                                    return (
+                                        <div className="grid grid-cols-7 gap-1">
+                                            {Array.from({ length: daysInMonth }, (_, i) => {
+                                                const day = i + 1
+                                                const isCompleted = completedDaysOfMonth.includes(day)
+                                                const isDayToday = day === currentDay
+
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs relative
+                                                            ${isCompleted
+                                                                ? 'bg-[var(--accent-blue)] text-white'
+                                                                : 'bg-[var(--bg-button)] text-[var(--text-secondary)]'
+                                                            }
+                                                            ${isDayToday && !isCompleted ? 'ring-2 ring-[var(--accent-blue)] ring-offset-1 ring-offset-[var(--bg-card)]' : ''}
+                                                        `}
                                                     >
-                                                        {habit.completedDays.includes(i) && (
-                                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        )}
-                                                    </motion.button>
-                                                    <span className="text-xs text-[var(--text-secondary)]">{String(dayOfMonth).padStart(2, '0')}.{String(date.getMonth() + 1).padStart(2, '0')}</span>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )
-                            })()}
-
-                            {/* Month Grid */}
-                            {viewMode === 'month' && (() => {
-                                const today = new Date()
-                                const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-                                const currentDay = today.getDate()
-                                const completedDaysOfMonth = habit.completedDaysOfMonth || []
-
-                                return (
-                                    <div className="grid grid-cols-7 gap-1">
-                                        {Array.from({ length: daysInMonth }, (_, i) => {
-                                            const day = i + 1
-                                            const isCompleted = completedDaysOfMonth.includes(day)
-                                            const isToday = day === currentDay
-
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs relative
-                                                        ${isCompleted
-                                                            ? 'bg-[var(--accent-blue)] text-white'
-                                                            : 'bg-[var(--bg-button)] text-[var(--text-secondary)]'
-                                                        }
-                                                        ${isToday && !isCompleted ? 'ring-2 ring-[var(--accent-blue)] ring-offset-1 ring-offset-[var(--bg-card)]' : ''}
-                                                    `}
-                                                >
-                                                    {day}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )
-                            })()}
-                        </div>
+                                                        {day}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )
+                                })()}
+                            </div>
+                        </SwipeableHabit>
                     ))}
                 </div>
             )}

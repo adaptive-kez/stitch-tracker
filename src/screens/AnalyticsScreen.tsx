@@ -13,7 +13,7 @@ interface Task {
 interface Habit {
     id: string
     title: string
-    completedDays: number[]
+    completedDates: string[]
     completedDaysOfMonth?: number[]
 }
 
