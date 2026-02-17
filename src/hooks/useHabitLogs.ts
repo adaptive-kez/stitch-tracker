@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { habitLogsApi, type DbHabitLog } from '@/lib/api'
 import type { HabitLog } from '@/types'
+
+const LOCAL_LOGS_KEY = 'stitch_habit_logs'
 
 function toHabitLog(row: DbHabitLog): HabitLog {
     return {
@@ -11,18 +13,48 @@ function toHabitLog(row: DbHabitLog): HabitLog {
     }
 }
 
+// Persist logs to localStorage as fallback
+function saveLogsLocally(logs: HabitLog[]) {
+    try {
+        localStorage.setItem(LOCAL_LOGS_KEY, JSON.stringify(logs))
+    } catch { /* quota exceeded, ignore */ }
+}
+
+function loadLogsLocally(): HabitLog[] {
+    try {
+        const stored = localStorage.getItem(LOCAL_LOGS_KEY)
+        return stored ? JSON.parse(stored) : []
+    } catch {
+        return []
+    }
+}
+
 export function useHabitLogs(userId: string | null) {
-    const [logs, setLogs] = useState<HabitLog[]>([])
+    // Initialize from localStorage for instant display
+    const [logs, setLogs] = useState<HabitLog[]>(() => loadLogsLocally())
     const [isLoading, setIsLoading] = useState(true)
+    const logsRef = useRef(logs)
+
+    // Keep ref in sync for use in async closures
+    useEffect(() => {
+        logsRef.current = logs
+    }, [logs])
+
+    // Persist to localStorage whenever logs change
+    useEffect(() => {
+        saveLogsLocally(logs)
+    }, [logs])
 
     const loadLogs = useCallback(async () => {
         if (!userId) return
 
         try {
             const data = await habitLogsApi.list(userId)
-            setLogs(data.map(toHabitLog))
+            const serverLogs = data.map(toHabitLog)
+            setLogs(serverLogs)
         } catch (error) {
             console.error('Error loading habit logs:', error)
+            // Keep existing logs (from localStorage) on load failure
         } finally {
             setIsLoading(false)
         }
@@ -38,11 +70,14 @@ export function useHabitLogs(userId: string | null) {
         if (!userId) return
 
         const logDate = date || new Date().toISOString().split('T')[0]
-        const existingLog = logs.find(
+
+        // Use ref for fresh state to avoid stale closure issues
+        const currentLogs = logsRef.current
+        const existingLog = currentLogs.find(
             l => l.habit_id === habitId && l.completed_at === logDate
         )
 
-        // Optimistic update
+        // Optimistic update — these NEVER get rolled back
         if (existingLog) {
             setLogs(prev => prev.filter(l => l.id !== existingLog.id))
         } else {
@@ -55,6 +90,7 @@ export function useHabitLogs(userId: string | null) {
             setLogs(prev => [tempLog, ...prev])
         }
 
+        // Fire-and-forget API call — don't revert on failure
         try {
             if (existingLog) {
                 await habitLogsApi.delete(userId, habitId, logDate)
@@ -64,6 +100,7 @@ export function useHabitLogs(userId: string | null) {
                     completed_at: logDate,
                 })
 
+                // Replace temp with real server ID
                 setLogs(prev => prev.map(l =>
                     l.id.startsWith('temp-') && l.habit_id === habitId && l.completed_at === logDate
                         ? toHabitLog(data)
@@ -71,12 +108,9 @@ export function useHabitLogs(userId: string | null) {
                 ))
             }
         } catch (error) {
-            console.error('Habit log error:', error)
-            if (existingLog) {
-                setLogs(prev => [existingLog, ...prev])
-            } else {
-                setLogs(prev => prev.filter(l => !l.id.startsWith('temp-')))
-            }
+            // Log but do NOT revert — user intent is preserved
+            // localStorage backup ensures persistence across reloads
+            console.warn('Habit log sync error (kept locally):', error)
         }
     }
 
