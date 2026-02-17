@@ -460,30 +460,47 @@ export function HabitsScreen({ habits, onAddHabit, onToggleHabitDay, onDeleteHab
                                 {/* Month Grid */}
                                 {viewMode === 'month' && (() => {
                                     const today = new Date()
-                                    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+                                    const year = today.getFullYear()
+                                    const month = today.getMonth()
+                                    const daysInMonth = new Date(year, month + 1, 0).getDate()
                                     const currentDay = today.getDate()
-                                    const completedDaysOfMonth = habit.completedDaysOfMonth || []
 
                                     return (
                                         <div className="grid grid-cols-7 gap-1">
                                             {Array.from({ length: daysInMonth }, (_, i) => {
                                                 const day = i + 1
-                                                const isCompleted = completedDaysOfMonth.includes(day)
+                                                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                                                const isCompleted = habit.completedDates.includes(dateStr)
                                                 const isDayToday = day === currentDay
 
                                                 return (
-                                                    <div
+                                                    <motion.button
                                                         key={i}
-                                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs relative
+                                                        whileTap={{ scale: 0.85 }}
+                                                        onClick={() => onToggleHabitDay?.(habit.id, dateStr)}
+                                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs relative cursor-pointer transition-colors
                                                             ${isCompleted
                                                                 ? 'bg-[var(--accent-blue)] text-white'
-                                                                : 'bg-[var(--bg-button)] text-[var(--text-secondary)]'
+                                                                : 'bg-[var(--bg-button)] text-[var(--text-secondary)] hover:bg-[var(--bg-button-hover)]'
                                                             }
                                                             ${isDayToday && !isCompleted ? 'ring-2 ring-[var(--accent-blue)] ring-offset-1 ring-offset-[var(--bg-card)]' : ''}
                                                         `}
                                                     >
-                                                        {day}
-                                                    </div>
+                                                        {isCompleted ? (
+                                                            <motion.svg
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                className="w-3 h-3 text-white"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </motion.svg>
+                                                        ) : (
+                                                            day
+                                                        )}
+                                                    </motion.button>
                                                 )
                                             })}
                                         </div>
