@@ -1,5 +1,5 @@
 import { Plus, ChevronDown, ChevronUp, Clock, Sparkles, Heart, MessageCircle, ChevronLeft, Star, Calendar, Bell, Repeat, Trash2 } from 'lucide-react'
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimationControls } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
 import { StitchMascot } from '@/components/StitchMascot'
@@ -68,10 +68,14 @@ function SwipeableJournalEntry({
         ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
     )
     const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+    const controls = useAnimationControls()
 
-    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = async (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x < -100 && onDelete) {
+            await controls.start({ x: -300, transition: { duration: 0.2 } })
             onDelete(entry.id)
+        } else {
+            controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } })
         }
     }
 
@@ -93,6 +97,7 @@ function SwipeableJournalEntry({
                 dragConstraints={{ left: -150, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
+                animate={controls}
                 style={{ x }}
                 className="p-3 rounded-xl bg-[var(--bg-card)] text-sm relative z-10 cursor-grab active:cursor-grabbing"
             >
@@ -125,10 +130,14 @@ function SwipeableTask({
         ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
     )
     const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+    const controls = useAnimationControls()
 
-    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = async (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x < -100 && onDelete) {
+            await controls.start({ x: -300, transition: { duration: 0.2 } })
             onDelete(task.id)
+        } else {
+            controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } })
         }
     }
 
@@ -151,9 +160,8 @@ function SwipeableTask({
                 dragConstraints={{ left: -150, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
+                animate={controls}
                 style={{ x }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
                 className={`flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-card)] relative z-10 cursor-grab active:cursor-grabbing ${task.isImportant ? 'border-2 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.15)]' : ''
                     }`}
             >

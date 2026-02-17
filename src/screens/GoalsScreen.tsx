@@ -1,5 +1,5 @@
 import { Plus, ChevronLeft, X, Target, Check, Trash2 } from 'lucide-react'
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimationControls } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useState } from 'react'
 import { StitchMascot } from '@/components/StitchMascot'
@@ -36,10 +36,14 @@ function SwipeableGoal({
         ['rgba(239, 68, 68, 1)', 'rgba(239, 68, 68, 0)']
     )
     const deleteOpacity = useTransform(x, [-100, -50], [1, 0])
+    const controls = useAnimationControls()
 
-    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = async (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x < -100 && onDelete) {
+            await controls.start({ x: -300, transition: { duration: 0.2 } })
             onDelete(goal.id)
+        } else {
+            controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } })
         }
     }
 
@@ -58,6 +62,7 @@ function SwipeableGoal({
                 dragConstraints={{ left: -150, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
+                animate={controls}
                 style={{ x }}
                 className="relative z-10 cursor-grab active:cursor-grabbing"
             >
