@@ -71,11 +71,14 @@ export function useJournal(userId: string | null) {
     }
 
     const deleteEntry = async (entryId: string) => {
+        // Optimistic: remove immediately
+        setEntries(prev => prev.filter(e => e.id !== entryId))
+
         try {
             await journalApi.delete(userId!, entryId)
-            setEntries(prev => prev.filter(e => e.id !== entryId))
         } catch (error) {
-            console.error('Error deleting journal entry:', error)
+            // Don't revert — user intent preserved
+            console.warn('Journal delete sync error:', error)
         }
     }
 
